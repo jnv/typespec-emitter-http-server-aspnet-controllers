@@ -1,0 +1,7 @@
+# TypeSpec config for sample compilation
+# Uses the local http-server-aspnet emitter (parent directory)
+# Output is written to tsp-output/ at the project root
+
+output-dir: "{cwd}/tsp-output"
+emit:
+  - ..

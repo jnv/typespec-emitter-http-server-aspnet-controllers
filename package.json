@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "alloy build",
+    "build:samples": "npm run build && tsp compile ./samples/main.tsp",
     "clean": "rimraf dist/ .temp/",
     "test": "vitest run",
     "test:watch": "vitest -w",
