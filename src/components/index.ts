@@ -1,1 +1,1 @@
-export { CSharpModel } from "./CSharpModel.js";
+// Barrel file for components
