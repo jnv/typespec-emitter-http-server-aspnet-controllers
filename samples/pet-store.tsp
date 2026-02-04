@@ -1,12 +1,18 @@
 // Pet store API models - sample for C# code generation
 
+enum PetStatus {
+  available,
+  pending,
+  sold,
+}
+
 model Pet {
   id: int64;
   name: string;
   category?: Category;
   photoUrls: string[];
   tags?: Tag[];
-  status: "available" | "pending" | "sold";
+  status: PetStatus;
 }
 
 model Category {
