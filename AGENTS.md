@@ -18,11 +18,24 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
 | **Runtime / tests** | Node (ESM), [Vitest](https://vitest.dev/) | Run emitter as a TypeSpec library; tests use `@typespec/compiler/testing` and the local emitter. |
 | **Output** | C# (ASP.NET Core) | Generated code targets .NET (e.g. ASP.NET Core) — models today; controllers later. |
 
+## Preferences for agents
+
+When extending or modifying the emitter, follow this order of preference:
+
+- **Emitter-framework first**  
+  Prefer components from `@typespec/emitter-framework` and `@typespec/emitter-framework/csharp` before writing custom emission logic. The C# subpackage is not fully documented but is part of the framework; use it when it fits. From `@typespec/emitter-framework/csharp`: `ClassDeclaration`, `TypeExpression`, `Property`, `EnumDeclaration`, `JsonConverter`, `JsonConverterResolver`.
+- **Typekits before custom reflection**  
+  For TypeSpec type/model/operation reflection, use typekits (`$` from `@typespec/compiler/typekit` or `useTsp()` from `@typespec/emitter-framework`) before writing custom traversal or type checks. If using HTTP metadata, add `import "@typespec/http/experimental/typekit"` so HTTP typekits are available.
+- **Alloy C# before strings**  
+  For C# structure (classes, methods, properties, attributes, namespaces, files), prefer `@alloy-js/csharp` components (e.g. `cs.ClassDeclaration`, `cs.Method`, `cs.Property`, `cs.Attribute`, `cs.Namespace`, `cs.SourceFile`) over building C# with template literals or string concatenation.
+
+References: [Emitter framework](https://typespec.io/docs/extending-typespec/emitter-framework/), [Typekits API](https://typespec.io/docs/standard-library/reference/typekits/); [TypeSpec overview](https://deepwiki.com/microsoft/typespec/), [Emitter framework](https://deepwiki.com/microsoft/typespec/4-emitter-framework), [TCGC / SDK context](https://deepwiki.com/microsoft/typespec/4.3-tcgc-and-sdk-context).
+
 ## Key paths
 
 - **Emitter entry**: `src/emitter.tsx` — `$onEmit`; uses `extract-models` and emitter-framework `ClassDeclaration`.
 - **Model filtering**: `src/utils/extract-models.ts` — which models to emit (skips stdlib and indexer-only types).
-- **Type mapping**: `src/utils/type-mapping.ts` — TypeSpec type → C# type name (if used by custom components).
+- **Type mapping**: Prefer emitter-framework C# `TypeExpression` and typekits; add `src/utils/type-mapping.ts` only if framework/typekits cannot cover a case.
 - **Samples**: `samples/*.tsp` + `samples/main.tsp` — sample specs; compile with `npm run build:samples` → output under `tsp-output/`.
 
 ## Commands
