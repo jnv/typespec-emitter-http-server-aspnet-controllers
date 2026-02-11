@@ -1,5 +1,5 @@
 import * as cs from "@alloy-js/csharp";
-import type { Children } from "@alloy-js/core";
+import { type Children, List } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
@@ -98,7 +98,9 @@ export function OperationsInterfaceDeclaration(
 
   return (
     <cs.InterfaceDeclaration public name={interfaceName}>
-      {methods}
+      <List hardline>
+        {methods}
+      </List>
     </cs.InterfaceDeclaration>
   );
 }

@@ -1,5 +1,5 @@
 import * as cs from "@alloy-js/csharp";
-import { code, type Children } from "@alloy-js/core";
+import { code, type Children, List } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
@@ -144,11 +144,15 @@ return NoContent();`;
         <cs.Attribute name="Route" args={[routeTemplateArg]} />,
       ]}
     >
-      <cs.Field private readonly name={operationsFieldName} type={interfaceName as Children} />
-      <cs.Constructor public parameters={[constructorParam]}>
-        {code`${operationsFieldName} = operations;`}
-      </cs.Constructor>
-      {methods}
+      <List doubleHardline>
+        <cs.Field private readonly name={operationsFieldName} type={interfaceName as Children} />
+        <cs.Constructor public parameters={[constructorParam]}>
+          {code`${operationsFieldName} = operations;`}
+        </cs.Constructor>
+        <List hardline>
+          {methods}
+        </List>
+      </List>
     </cs.ClassDeclaration>
   );
 }
