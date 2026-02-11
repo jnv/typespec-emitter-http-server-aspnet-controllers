@@ -1,5 +1,6 @@
 import * as cs from "@alloy-js/csharp";
 import type { EmitContext } from "@typespec/compiler";
+import type { HttpOperation, OperationContainer } from "@typespec/http";
 import { Output, writeOutput } from "@typespec/emitter-framework";
 import { ClassDeclaration, EnumDeclaration } from "@typespec/emitter-framework/csharp";
 import { ControllerDeclaration } from "./components/controller.jsx";
@@ -15,7 +16,7 @@ export async function $onEmit(context: EmitContext) {
   const { models, enums } = extractTypes(program);
 
   const [httpServices] = getHttpServices(program);
-  const controllerGroups: Array<{ container: import("@typespec/http").OperationContainer; operations: import("@typespec/http").HttpOperation[] }> = [];
+  const controllerGroups: Array<{ container: OperationContainer; operations: HttpOperation[] }> = [];
   for (const service of httpServices) {
     if (service.operations.length === 0) continue;
     const byContainer = groupOperationsByContainer(service.operations);
