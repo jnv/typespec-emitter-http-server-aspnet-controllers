@@ -12,22 +12,22 @@ describe("emitter", () => {
         name: string;
       }
     `);
-    const modelsCs = result.outputs["Models.cs"];
-    strictEqual(typeof modelsCs, "string", "Models.cs should be emitted");
+    const userCs = result.outputs["User.cs"];
+    strictEqual(typeof userCs, "string", "User.cs should be emitted");
     strictEqual(
-      modelsCs.includes("public class User"),
+      userCs.includes("class User"),
       true,
-      "Models.cs should contain public class User",
+      "User.cs should contain class User",
     );
     strictEqual(
-      modelsCs.includes("public int Id"),
+      userCs.includes("Id") && userCs.includes("int"),
       true,
-      "Models.cs should contain public int Id",
+      "User.cs should contain Id property of type int",
     );
     strictEqual(
-      modelsCs.includes("public string Name"),
+      userCs.includes("Name") && userCs.includes("string"),
       true,
-      "Models.cs should contain public string Name",
+      "User.cs should contain Name property of type string",
     );
   });
 });

@@ -13,11 +13,11 @@ export async function $onEmit(context: EmitContext) {
     context.program,
     <Output program={context.program} namePolicy={cs.createCSharpNamePolicy()}>
       <cs.Namespace name={namespace}>
-        <cs.SourceFile path="Models.cs">
-          {models.map((model) => (
+        {models.map((model) => (
+          <cs.SourceFile path={`${model.name}.cs`}>
             <ClassDeclaration type={model} />
-          ))}
-        </cs.SourceFile>
+          </cs.SourceFile>
+        ))}
       </cs.Namespace>
     </Output>,
     context.emitterOutputDir,
