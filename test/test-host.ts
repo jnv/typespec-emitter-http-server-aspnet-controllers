@@ -3,7 +3,7 @@ import { createTester } from "@typespec/compiler/testing";
 
 // Include the local package so the emitter "http-server-aspnet" can be resolved
 const baseTester = createTester(resolvePath(import.meta.dirname, ".."), {
-  libraries: ["http-server-aspnet"],
+  libraries: ["@typespec/http", "http-server-aspnet"],
 });
 
 // Emitter tester for testing C# output

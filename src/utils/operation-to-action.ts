@@ -20,6 +20,27 @@ export interface ActionParameter {
   param: HttpOperationParameter;
 }
 
+/** Get the TypeSpec type for an action parameter (route/query/header/body). */
+export function getParamType(param: ActionParameter): { type: import("@typespec/compiler").Type } {
+  const p = param.param as unknown as {
+    param?: { type: import("@typespec/compiler").Type };
+    type?: import("@typespec/compiler").Type;
+  };
+  if (p.param?.type) return { type: p.param.type };
+  if (p.type) return { type: p.type };
+  throw new Error("Unknown parameter shape");
+}
+
+/** Get the body type from HttpPayloadBody when present. */
+export function getBodyType(
+  body: HttpPayloadBody,
+): import("@typespec/compiler").Type | undefined {
+  if ("type" in body && body.type) {
+    return body.type as import("@typespec/compiler").Type;
+  }
+  return undefined;
+}
+
 export interface ActionMethodInfo {
   operationName: string;
   verb: HttpVerb;

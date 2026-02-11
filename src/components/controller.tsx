@@ -1,14 +1,16 @@
 import * as cs from "@alloy-js/csharp";
-import type { Children } from "@alloy-js/core";
+import { code, type Children } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
 import type { OperationContainer } from "@typespec/http";
+import { useTsp } from "@typespec/emitter-framework";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import {
   getActionMethodInfo,
+  getBodyType,
   getContainerRoutePath,
-  type ActionParameter,
+  getParamType,
   type NamePolicyLike,
 } from "../utils/operation-to-action.js";
 
@@ -19,33 +21,25 @@ export interface ControllerDeclarationProps {
   namePolicy?: NamePolicyLike;
 }
 
-function getParamType(param: ActionParameter): { type: import("@typespec/compiler").Type } {
-  const p = param.param as unknown as { param?: { type: import("@typespec/compiler").Type }; type?: import("@typespec/compiler").Type };
-  if (p.param?.type) return { type: p.param.type };
-  if (p.type) return { type: p.type };
-  throw new Error("Unknown parameter shape");
-}
-
-function getBodyType(body: HttpPayloadBody): import("@typespec/compiler").Type | undefined {
-  if ("type" in body && body.type) {
-    return body.type as import("@typespec/compiler").Type;
-  }
-  return undefined;
-}
-
 /**
  * Renders an ASP.NET Core controller class for a group of HTTP operations (same container).
+ * The controller injects the operations interface and delegates each action to it (mediator pattern).
  */
 export function ControllerDeclaration(props: ControllerDeclarationProps): Children {
   const { program, container, operations } = props;
   const namePolicy = props.namePolicy ?? cs.useCSharpNamePolicy();
-  const controllerName =
-    namePolicy.getName(container.name ?? "Api", "class") + "Controller";
+  const { $ } = useTsp();
+  const containerClassName = namePolicy.getName(container.name ?? "Api", "class");
+  const controllerName = containerClassName + "Controller";
+  const interfaceName = "I" + containerClassName;
+  const operationsFieldName = "_operations";
   const containerRoute = getContainerRoutePath(program, container);
   const routeTemplateValue = containerRoute?.replace(/^\//, "") ?? "controller";
   const routeTemplateArg: Children = (
     <>{"\""}{routeTemplateValue}{"\""}</>
   );
+
+  const constructorParam = { name: "operations", type: interfaceName as Children };
 
   const methods: Children[] = [];
 
@@ -81,10 +75,15 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
         attributes: attrs.length ? attrs : undefined,
       });
     }
+    paramDescriptors.push({
+      name: "cancellationToken",
+      type: "CancellationToken" as Children,
+      attributes: undefined,
+    });
 
     const returnType: Children = isVoidType(op.operation.returnType)
-      ? "IActionResult"
-      : <>{"ActionResult<"} <TypeExpression type={op.operation.returnType} /> {">"}</>;
+      ? "Task<IActionResult>"
+      : <>{"Task<ActionResult<"} <TypeExpression type={op.operation.returnType} /> {">>"}</>;
 
     const verbAttr = info.actionRoute
       ? (
@@ -95,13 +94,30 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
       )
       : <cs.Attribute name={info.verbAttribute} />;
 
-    const expressionBody = isVoidType(op.operation.returnType)
-      ? "NoContent()"
-      : "Ok(default)";
+    const methodNameAsync = info.operationName + "Async";
+    const argList = [...info.parameters.map((p) => p.name), "cancellationToken"].join(", ");
+    const hasReturn = !isVoidType(op.operation.returnType);
+    const methodBody: Children = hasReturn
+      ? code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
+return Ok(result);`
+      : code`await ${operationsFieldName}.${methodNameAsync}(${argList});
+return NoContent();`;
+
+    const operationDoc = $.type.getDoc(op.operation);
+    const doc =
+      operationDoc ?
+        (
+          <cs.DocSummary>
+            <cs.DocFromMarkdown markdown={operationDoc} />
+          </cs.DocSummary>
+        )
+      : undefined;
 
     methods.push(
       <cs.Method
         public
+        virtual
+        async
         name={info.operationName}
         returns={returnType}
         parameters={paramDescriptors.map((p) => ({
@@ -110,9 +126,9 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
           attributes: p.attributes,
         }))}
         attributes={[verbAttr]}
-        expression
+        doc={doc}
       >
-        {expressionBody}
+        {methodBody}
       </cs.Method>,
     );
   }
@@ -120,6 +136,7 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
   return (
     <cs.ClassDeclaration
       public
+      partial
       name={controllerName}
       baseType={<>ControllerBase</>}
       attributes={[
@@ -127,6 +144,10 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
         <cs.Attribute name="Route" args={[routeTemplateArg]} />,
       ]}
     >
+      <cs.Field private readonly name={operationsFieldName} type={interfaceName as Children} />
+      <cs.Constructor public parameters={[constructorParam]}>
+        {code`${operationsFieldName} = operations;`}
+      </cs.Constructor>
       {methods}
     </cs.ClassDeclaration>
   );

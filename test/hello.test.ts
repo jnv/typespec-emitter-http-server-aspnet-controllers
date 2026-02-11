@@ -12,8 +12,8 @@ describe("emitter", () => {
         name: string;
       }
     `);
-    const userCs = result.outputs["User.cs"];
-    strictEqual(typeof userCs, "string", "User.cs should be emitted");
+    const userCs = result.outputs["Models/User.cs"];
+    strictEqual(typeof userCs, "string", "Models/User.cs should be emitted");
     strictEqual(
       userCs.includes("class User"),
       true,
@@ -44,18 +44,57 @@ describe("emitter", () => {
         }
       }
     `);
-    strictEqual(typeof result.outputs["NestedUser.cs"], "string", "NestedUser.cs should be emitted");
+    strictEqual(typeof result.outputs["Models/NestedUser.cs"], "string", "Models/NestedUser.cs should be emitted");
     strictEqual(
-      result.outputs["NestedUser.cs"].includes("class NestedUser"),
+      result.outputs["Models/NestedUser.cs"].includes("class NestedUser"),
       true,
-      "NestedUser.cs should contain class NestedUser",
+      "Models/NestedUser.cs should contain class NestedUser",
     );
-    strictEqual(typeof result.outputs["NestedStatus.cs"], "string", "NestedStatus.cs should be emitted");
+    strictEqual(typeof result.outputs["Models/NestedStatus.cs"], "string", "Models/NestedStatus.cs should be emitted");
     strictEqual(
-      result.outputs["NestedStatus.cs"].includes("enum NestedStatus"),
+      result.outputs["Models/NestedStatus.cs"].includes("enum NestedStatus"),
       true,
-      "NestedStatus.cs should contain enum NestedStatus",
+      "Models/NestedStatus.cs should contain enum NestedStatus",
     );
+  });
+
+  it("emits operations interface and controller with mediator pattern", async () => {
+    const result = await Tester.compile(`
+      import "@typespec/http";
+      using TypeSpec.Http;
+
+      model User {
+        id: int64;
+        name: string;
+      }
+
+      @route("/users")
+      interface Users {
+        @get list(): User[];
+        @get get(@path id: int64): User;
+      }
+    `);
+
+    const iUsers = result.outputs["Operations/IUsers.cs"];
+    strictEqual(typeof iUsers, "string", "Operations/IUsers.cs should be emitted");
+    strictEqual(iUsers.includes("public interface IUsers"), true, "IUsers interface should be declared");
+    strictEqual(
+      iUsers.includes("Task<") && iUsers.includes("ListAsync") && iUsers.includes("CancellationToken cancellationToken = default"),
+      true,
+      "IUsers should declare async methods with CancellationToken",
+    );
+
+    const controller = result.outputs["Controllers/UsersController.cs"];
+    strictEqual(typeof controller, "string", "Controllers/UsersController.cs should be emitted");
+    strictEqual(controller.includes("public partial class UsersController"), true, "Controller should be partial class");
+    strictEqual(controller.includes("IUsers operations"), true, "Controller should take IUsers in constructor");
+    strictEqual(controller.includes("_operations"), true, "Controller should store operations in field");
+    strictEqual(
+      controller.includes("CancellationToken cancellationToken") && controller.includes("await _operations."),
+      true,
+      "Controller actions should take CancellationToken and call operations",
+    );
+    strictEqual(controller.includes("return Ok(result)") || controller.includes("return Ok(result);"), true, "Controller should return Ok(result)");
   });
 });
 
