@@ -30,6 +30,33 @@ describe("emitter", () => {
       "User.cs should contain Name property of type string",
     );
   });
+
+  it("emits models and enums from nested namespaces", async () => {
+    const result = await Tester.compile(`
+      namespace Api {
+        model NestedUser {
+          id: int32;
+          name: string;
+        }
+        enum NestedStatus {
+          active,
+          inactive,
+        }
+      }
+    `);
+    strictEqual(typeof result.outputs["NestedUser.cs"], "string", "NestedUser.cs should be emitted");
+    strictEqual(
+      result.outputs["NestedUser.cs"].includes("class NestedUser"),
+      true,
+      "NestedUser.cs should contain class NestedUser",
+    );
+    strictEqual(typeof result.outputs["NestedStatus.cs"], "string", "NestedStatus.cs should be emitted");
+    strictEqual(
+      result.outputs["NestedStatus.cs"].includes("enum NestedStatus"),
+      true,
+      "NestedStatus.cs should contain enum NestedStatus",
+    );
+  });
 });
 
 

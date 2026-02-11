@@ -4,8 +4,7 @@ import { Output, writeOutput } from "@typespec/emitter-framework";
 import { ClassDeclaration, EnumDeclaration } from "@typespec/emitter-framework/csharp";
 import { ControllerDeclaration } from "./components/controller.jsx";
 import { getHttpServices } from "./utils/extract-http-services.js";
-import { extractEnums } from "./utils/extract-enums.js";
-import { extractModels } from "./utils/extract-models.js";
+import { extractTypes } from "./utils/extract-types.js";
 import { groupOperationsByContainer } from "./utils/operation-to-action.js";
 
 export async function $onEmit(context: EmitContext) {
@@ -13,9 +12,7 @@ export async function $onEmit(context: EmitContext) {
   const namePolicy = cs.createCSharpNamePolicy();
   const modelsNamespace = "Generated.Models";
   const controllersNamespace = "Generated.Controllers";
-  const globalNs = program.getGlobalNamespaceType();
-  const enums = extractEnums(globalNs);
-  const models = extractModels(globalNs);
+  const { models, enums } = extractTypes(program);
 
   const [httpServices] = getHttpServices(program);
   const controllerGroups: Array<{ container: import("@typespec/http").OperationContainer; operations: import("@typespec/http").HttpOperation[] }> = [];

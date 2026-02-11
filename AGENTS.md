@@ -45,7 +45,8 @@ When building C# output with `@alloy-js/csharp`, use these building blocks (full
 ## Key paths
 
 - **Emitter entry**: `src/emitter.tsx` — `$onEmit`; uses `extract-models` and emitter-framework `ClassDeclaration`.
-- **Model filtering**: `src/utils/extract-models.ts` — which models to emit (skips stdlib and indexer-only types).
+- **Model/type extraction**: `src/utils/extract-types.ts` — single entrypoint for models and enums (skips stdlib and array/record); `extract-models.ts` and `extract-enums.ts` are thin wrappers.
+- **Output flattening**: All emitted models and enums are placed in a single C# namespace (`Generated.Models`). TypeSpec namespace hierarchy is not preserved; two types with the same short name in different TypeSpec namespaces would collide (same file/class name). Prefer unique type names across namespaces or document this limitation.
 - **Type mapping**: Prefer emitter-framework C# `TypeExpression` and typekits; add `src/utils/type-mapping.ts` only if framework/typekits cannot cover a case.
 - **Samples**: `samples/*.tsp` + `samples/main.tsp` — sample specs; compile with `npm run build:samples` → output under `tsp-output/`.
 
