@@ -1,4 +1,6 @@
 // User API models - sample for C# code generation
+import "@typespec/http";
+using TypeSpec.Http;
 
 model User {
   id: int64;
@@ -15,4 +17,11 @@ model Address {
   state?: string;
   postalCode: string;
   country: string;
+}
+
+@route("/users")
+interface Users {
+  @get list(): User[];
+  @get get(@path id: int64): User;
+  @post create(@body user: User): User;
 }
