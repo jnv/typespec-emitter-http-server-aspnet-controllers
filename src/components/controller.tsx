@@ -1,17 +1,18 @@
 import * as cs from "@alloy-js/csharp";
-import { code, type Children, List } from "@alloy-js/core";
+import type { Children } from "@alloy-js/core";
+import { code, List } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
 import type { OperationContainer } from "@typespec/http";
 import { useTsp } from "@typespec/emitter-framework";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import type { NamePolicyLike } from "../utils/operation-to-action.js";
 import {
   getActionMethodInfo,
   getBodyType,
   getContainerRoutePath,
   getParamType,
-  type NamePolicyLike,
 } from "../utils/operation-to-action.js";
 
 export interface ControllerDeclarationProps {

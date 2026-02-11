@@ -18,6 +18,13 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
 | **Runtime / tests** | Node (ESM), [Vitest](https://vitest.dev/) | Run emitter as a TypeSpec library; tests use `@typespec/compiler/testing` and the local emitter. |
 | **Output** | C# (ASP.NET Core) | Generated code targets .NET (e.g. ASP.NET Core) — models today; controllers later. |
 
+## Code style
+
+- **No inline type imports**  
+  Do not use inline type imports (e.g. `import("@typespec/compiler").Type`). Use top-level `import type { Type } from "..."` at the top of the file and refer to the type by name.
+- **Separate type and value imports**  
+  Use separate statements for type-only and value imports. Prefer `import type { X } from "..."` for types and `import { a, b } from "..."` for values; do not mix `type X` and value bindings in the same `import` (e.g. avoid `import { type Children, List }`).
+
 ## Preferences for agents
 
 When extending or modifying the emitter, follow this order of preference:

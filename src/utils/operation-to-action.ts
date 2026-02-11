@@ -1,4 +1,4 @@
-import type { Program } from "@typespec/compiler";
+import type { Program, Type } from "@typespec/compiler";
 import { getRoutePath } from "@typespec/http";
 import type {
   HttpOperation,
@@ -21,10 +21,10 @@ export interface ActionParameter {
 }
 
 /** Get the TypeSpec type for an action parameter (route/query/header/body). */
-export function getParamType(param: ActionParameter): { type: import("@typespec/compiler").Type } {
+export function getParamType(param: ActionParameter): { type: Type } {
   const p = param.param as unknown as {
-    param?: { type: import("@typespec/compiler").Type };
-    type?: import("@typespec/compiler").Type;
+    param?: { type: Type };
+    type?: Type;
   };
   if (p.param?.type) return { type: p.param.type };
   if (p.type) return { type: p.type };
@@ -32,11 +32,9 @@ export function getParamType(param: ActionParameter): { type: import("@typespec/
 }
 
 /** Get the body type from HttpPayloadBody when present. */
-export function getBodyType(
-  body: HttpPayloadBody,
-): import("@typespec/compiler").Type | undefined {
+export function getBodyType(body: HttpPayloadBody): Type | undefined {
   if ("type" in body && body.type) {
-    return body.type as import("@typespec/compiler").Type;
+    return body.type as Type;
   }
   return undefined;
 }
