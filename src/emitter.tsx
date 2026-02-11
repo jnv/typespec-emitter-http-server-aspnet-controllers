@@ -1,9 +1,10 @@
 import * as cs from "@alloy-js/csharp";
 import type { EmitContext } from "@typespec/compiler";
 import { Output, writeOutput } from "@typespec/emitter-framework";
-import { ClassDeclaration } from "@typespec/emitter-framework/csharp";
+import { ClassDeclaration, EnumDeclaration } from "@typespec/emitter-framework/csharp";
 import { ControllerDeclaration } from "./components/controller.jsx";
 import { getHttpServices } from "./utils/extract-http-services.js";
+import { extractEnums } from "./utils/extract-enums.js";
 import { extractModels } from "./utils/extract-models.js";
 import { groupOperationsByContainer } from "./utils/operation-to-action.js";
 
@@ -13,6 +14,7 @@ export async function $onEmit(context: EmitContext) {
   const modelsNamespace = "Generated.Models";
   const controllersNamespace = "Generated.Controllers";
   const globalNs = program.getGlobalNamespaceType();
+  const enums = extractEnums(globalNs);
   const models = extractModels(globalNs);
 
   const [httpServices] = getHttpServices(program);
@@ -31,6 +33,11 @@ export async function $onEmit(context: EmitContext) {
     program,
     <Output program={program} namePolicy={namePolicy}>
       <cs.Namespace name={modelsNamespace}>
+        {enums.map((enumType) => (
+          <cs.SourceFile path={`${namePolicy.getName(enumType.name!, "enum")}.cs`}>
+            <EnumDeclaration type={enumType} />
+          </cs.SourceFile>
+        ))}
         {models.map((model) => (
           <cs.SourceFile path={`${model.name}.cs`}>
             <ClassDeclaration type={model} />
