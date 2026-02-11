@@ -13,7 +13,7 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
 |-------|------------|------|
 | **Spec / compiler** | [TypeSpec](https://typespec.io/) (`@typespec/compiler`, `@typespec/http`) | Defines the API (models, operations); compiler provides the program AST and emit hooks. |
 | **Emitter framework** | [@typespec/emitter-framework](https://github.com/microsoft/typespec/tree/main/packages/emitter-framework) | Base for emitters: `Output`, `writeOutput`, C# helpers like `ClassDeclaration`, name policies, output layout. |
-| **C# / JSX output** | [@alloy-js/core](https://www.npmjs.com/package/@alloy-js/core), [@alloy-js/csharp](https://www.npmjs.com/package/@alloy-js/csharp) | Declarative C# code generation (JSX-style API, namespaces, source files, C# name policy). |
+| **C# / JSX output** | [@alloy-js/core](https://www.npmjs.com/package/@alloy-js/core), [@alloy-js/csharp](https://www.npmjs.com/package/@alloy-js/csharp) | Declarative C# code generation (JSX-style API): type declarations, members, attributes, project structure — `Namespace`, `SourceFile`, C# name policy. |
 | **Library / build** | [@alloy-js/cli](https://www.npmjs.com/package/@alloy-js/cli), [@alloy-js/rollup-plugin](https://www.npmjs.com/package/@alloy-js/rollup-plugin) | Build and bundle the emitter (`alloy build`, Rollup + Babel for TS/JSX). |
 | **Runtime / tests** | Node (ESM), [Vitest](https://vitest.dev/) | Run emitter as a TypeSpec library; tests use `@typespec/compiler/testing` and the local emitter. |
 | **Output** | C# (ASP.NET Core) | Generated code targets .NET (e.g. ASP.NET Core) — models today; controllers later. |
@@ -29,7 +29,18 @@ When extending or modifying the emitter, follow this order of preference:
 - **Alloy C# before strings**  
   For C# structure (classes, methods, properties, attributes, namespaces, files), prefer `@alloy-js/csharp` components (e.g. `cs.ClassDeclaration`, `cs.Method`, `cs.Property`, `cs.Attribute`, `cs.Namespace`, `cs.SourceFile`) over building C# with template literals or string concatenation.
 
-References: [Emitter framework](https://typespec.io/docs/extending-typespec/emitter-framework/), [Typekits API](https://typespec.io/docs/standard-library/reference/typekits/); [TypeSpec overview](https://deepwiki.com/microsoft/typespec/), [Emitter framework](https://deepwiki.com/microsoft/typespec/4-emitter-framework), [TCGC / SDK context](https://deepwiki.com/microsoft/typespec/4.3-tcgc-and-sdk-context).
+References: [Emitter framework](https://typespec.io/docs/extending-typespec/emitter-framework/), [Typekits API](https://typespec.io/docs/standard-library/reference/typekits/); [TypeSpec overview](https://deepwiki.com/microsoft/typespec/), [Alloy overview](https://deepwiki.com/alloy-framework/alloy), [Alloy C# package](https://deepwiki.com/alloy-framework/alloy/5-c-package).
+
+### Alloy C# components
+
+When building C# output with `@alloy-js/csharp`, use these building blocks (full reference: Alloy overview and Alloy C# package in References above):
+
+- **Project structure**: `Namespace`, `SourceFile` (`path`, `using`), `UsingDirective`; optionally `CsprojFile` for .csproj.
+- **Type declarations**: `ClassDeclaration`, `StructDeclaration`, `RecordDeclaration`, `InterfaceDeclaration`, `EnumDeclaration`. This project uses emitter-framework’s `ClassDeclaration`/`EnumDeclaration` for models/enums; use `cs.ClassDeclaration` for custom types (e.g. controllers).
+- **Members**: `Method`, `Property`, `Field`, `Constructor`.
+- **Attributes**: `Attribute`, `Attributes`.
+- **Naming**: `createCSharpNamePolicy()` / `useCSharpNamePolicy()`; pass element type (e.g. `"class"`, `"enum"`) to `getName()`.
+- **Documentation** (when needed): `DocComment`, `FromMarkdown`, `Region`.
 
 ## Key paths
 
