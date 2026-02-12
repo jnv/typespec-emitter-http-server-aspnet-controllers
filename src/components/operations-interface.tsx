@@ -1,6 +1,6 @@
 import * as cs from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
-import { List } from "@alloy-js/core";
+import { List, Show } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
@@ -72,14 +72,11 @@ export function OperationsInterfaceDeclaration(
       );
 
     const operationDoc = $.type.getDoc(op.operation);
-    const doc =
-      operationDoc ?
-        (
-          <cs.DocSummary>
-            <cs.DocFromMarkdown markdown={operationDoc} />
-          </cs.DocSummary>
-        )
-      : undefined;
+    const doc = operationDoc ? (
+      <cs.DocSummary>
+        <cs.DocFromMarkdown markdown={operationDoc} />
+      </cs.DocSummary>
+    ) : undefined;
 
     methods.push(
       <cs.InterfaceMethod

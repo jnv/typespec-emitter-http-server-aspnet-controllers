@@ -1,4 +1,5 @@
 import * as cs from "@alloy-js/csharp";
+import { Show } from "@alloy-js/core";
 import type { EmitContext } from "@typespec/compiler";
 import type { HttpOperation, OperationContainer } from "@typespec/http";
 import { Output, writeOutput } from "@typespec/emitter-framework";
@@ -45,7 +46,7 @@ export async function $onEmit(context: EmitContext) {
           </cs.SourceFile>
         ))}
       </cs.Namespace>
-      {controllerGroups.length > 0 && (
+      <Show when={controllerGroups.length > 0}>
         <cs.Namespace name={operationsNamespace}>
           {controllerGroups.map(({ container, operations }) => {
             const interfaceName =
@@ -64,8 +65,6 @@ export async function $onEmit(context: EmitContext) {
             );
           })}
         </cs.Namespace>
-      )}
-      {controllerGroups.length > 0 && (
         <cs.Namespace name={controllersNamespace}>
           {controllerGroups.map(({ container, operations }) => {
             const controllerName =
@@ -90,7 +89,7 @@ export async function $onEmit(context: EmitContext) {
             );
           })}
         </cs.Namespace>
-      )}
+      </Show>
     </Output>,
     context.emitterOutputDir,
   );
