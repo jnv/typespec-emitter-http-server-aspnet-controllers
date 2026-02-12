@@ -49,6 +49,49 @@ When building C# output with `@alloy-js/csharp`, use these building blocks (full
 - **Naming**: `createCSharpNamePolicy()` / `useCSharpNamePolicy()`; pass element type (e.g. `"class"`, `"enum"`) to `getName()`.
 - **Documentation** (when needed): `DocComment`, `FromMarkdown`, `Region`.
 
+### Declarative patterns with Alloy Core
+
+When building JSX-based emitters, prefer declarative patterns from `@alloy-js/core` over imperative JavaScript:
+
+- **Conditional rendering**: Use `<Show when={condition}>` instead of `{condition && ...}` or ternaries for JSX rendering.
+  ```tsx
+  // Prefer this:
+  <Show when={hasValue} fallback={<DefaultComponent />}>
+    <ValueComponent />
+  </Show>
+
+  // Over this:
+  {hasValue ? <ValueComponent /> : <DefaultComponent />}
+  {hasValue && <ValueComponent />}
+  ```
+
+- **Multi-way conditionals**: Use `<Switch>` with `<Match>` for multiple conditions.
+  ```tsx
+  <Switch>
+    <Match when={condition1}>
+      <Component1 />
+    </Match>
+    <Match when={condition2}>
+      <Component2 />
+    </Match>
+    <Match else>
+      <DefaultComponent />
+    </Match>
+  </Switch>
+  ```
+
+- **When ternaries are acceptable**: For simple value assignment (not JSX rendering), ternaries are fine and often clearer:
+  ```tsx
+  const doc = operationDoc ? <cs.DocSummary>...</cs.DocSummary> : undefined;
+  ```
+
+- **Imperative logic**: Use standard JavaScript for building up data structures, accumulating values, or complex logic that doesn't involve JSX rendering. Not everything needs to be declarative.
+
+**Examples in this codebase**:
+- `src/emitter.tsx`: Uses `<Show>` to conditionally render controller/operations namespaces
+- `src/components/controller.tsx`: Uses `<Show>` for conditional method bodies and attributes
+- `src/components/operations-interface.tsx`: Uses ternary for simple doc assignment
+
 ## Key paths
 
 - **Emitter entry**: `src/emitter.tsx` — `$onEmit`; uses `extract-models` and emitter-framework `ClassDeclaration`.
