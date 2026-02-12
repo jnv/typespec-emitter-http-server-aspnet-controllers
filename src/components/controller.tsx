@@ -1,6 +1,6 @@
 import * as cs from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
-import { code, List } from "@alloy-js/core";
+import { code, List, Match, Show, Switch } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
@@ -58,22 +58,25 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
         ap.attribute === "FromBody" && "type" in ap.param
           ? <TypeExpression type={getBodyType(ap.param as unknown as HttpPayloadBody)!} />
           : <TypeExpression type={getParamType(ap).type} />;
-      const attrs: cs.AttributesProp = [];
+
+      let attribute: Children | undefined;
+
       if (ap.attribute === "FromRoute") {
-        attrs.push(<cs.Attribute name="FromRoute" />);
+        attribute = <cs.Attribute name="FromRoute" />;
       } else if (ap.attribute === "FromQuery") {
-        attrs.push(<cs.Attribute name="FromQuery" />);
+        attribute = <cs.Attribute name="FromQuery" />;
       } else if (ap.attribute === "FromBody") {
-        attrs.push(<cs.Attribute name="FromBody" />);
-      } else if (ap.attribute === "FromHeader" && ap.headerName) {
-        attrs.push(<cs.Attribute name="FromHeader" args={[ap.headerName]} />);
+        attribute = <cs.Attribute name="FromBody" />;
       } else if (ap.attribute === "FromHeader") {
-        attrs.push(<cs.Attribute name="FromHeader" />);
+        attribute = ap.headerName
+          ? <cs.Attribute name="FromHeader" args={[ap.headerName]} />
+          : <cs.Attribute name="FromHeader" />;
       }
+
       paramDescriptors.push({
         name: ap.name,
         type,
-        attributes: attrs.length ? attrs : undefined,
+        attributes: attribute ? [attribute] : undefined,
       });
     }
     paramDescriptors.push({
@@ -86,33 +89,38 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
       ? "Task<IActionResult>"
       : <>{"Task<ActionResult<"} <TypeExpression type={op.operation.returnType} /> {">>"}</>;
 
-    const verbAttr = info.actionRoute
-      ? (
+    const verbAttr = (
+      <Show
+        when={!!info.actionRoute}
+        fallback={<cs.Attribute name={info.verbAttribute} />}
+      >
         <cs.Attribute
           name={info.verbAttribute}
           args={[<>{"\""}{info.actionRoute}{"\""}</>]}
         />
-      )
-      : <cs.Attribute name={info.verbAttribute} />;
+      </Show>
+    );
 
     const methodNameAsync = info.operationName + "Async";
     const argList = [...info.parameters.map((p) => p.name), "cancellationToken"].join(", ");
     const hasReturn = !isVoidType(op.operation.returnType);
-    const methodBody: Children = hasReturn
-      ? code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
-return Ok(result);`
-      : code`await ${operationsFieldName}.${methodNameAsync}(${argList});
-return NoContent();`;
+    const methodBody: Children = (
+      <Show
+        when={hasReturn}
+        fallback={code`await ${operationsFieldName}.${methodNameAsync}(${argList});
+return NoContent();`}
+      >
+        {code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
+return Ok(result);`}
+      </Show>
+    );
 
     const operationDoc = $.type.getDoc(op.operation);
-    const doc =
-      operationDoc ?
-        (
-          <cs.DocSummary>
-            <cs.DocFromMarkdown markdown={operationDoc} />
-          </cs.DocSummary>
-        )
-      : undefined;
+    const doc = operationDoc ? (
+      <cs.DocSummary>
+        <cs.DocFromMarkdown markdown={operationDoc} />
+      </cs.DocSummary>
+    ) : undefined;
 
     methods.push(
       <cs.Method
