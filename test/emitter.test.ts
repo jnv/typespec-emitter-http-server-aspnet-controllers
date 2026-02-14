@@ -1,8 +1,7 @@
 import { t } from "@typespec/compiler/testing";
-import { strictEqual } from "node:assert";
+import { match, strictEqual } from "node:assert/strict";
 import { describe, it } from "vitest";
 import { CompileTester, Tester } from "./test-host.js";
-
 
 describe("emitter", () => {
   it("emits C# class for TypeSpec model", async () => {
@@ -14,19 +13,11 @@ describe("emitter", () => {
     `);
     const userCs = result.outputs["Models/User.cs"];
     strictEqual(typeof userCs, "string", "Models/User.cs should be emitted");
-    strictEqual(
-      userCs.includes("class User"),
-      true,
-      "User.cs should contain class User",
-    );
-    strictEqual(
-      userCs.includes("Id") && userCs.includes("int"),
-      true,
-      "User.cs should contain Id property of type int",
-    );
-    strictEqual(
-      userCs.includes("Name") && userCs.includes("string"),
-      true,
+    match(userCs, /class User/, "User.cs should contain class User");
+    match(userCs, /int\s+Id/, "User.cs should contain Id property of type int");
+    match(
+      userCs,
+      /string\s+Name/,
       "User.cs should contain Name property of type string",
     );
   });
@@ -44,16 +35,24 @@ describe("emitter", () => {
         }
       }
     `);
-    strictEqual(typeof result.outputs["Models/NestedUser.cs"], "string", "Models/NestedUser.cs should be emitted");
     strictEqual(
-      result.outputs["Models/NestedUser.cs"].includes("class NestedUser"),
-      true,
+      typeof result.outputs["Models/NestedUser.cs"],
+      "string",
+      "Models/NestedUser.cs should be emitted",
+    );
+    match(
+      result.outputs["Models/NestedUser.cs"],
+      /class NestedUser/,
       "Models/NestedUser.cs should contain class NestedUser",
     );
-    strictEqual(typeof result.outputs["Models/NestedStatus.cs"], "string", "Models/NestedStatus.cs should be emitted");
     strictEqual(
-      result.outputs["Models/NestedStatus.cs"].includes("enum NestedStatus"),
-      true,
+      typeof result.outputs["Models/NestedStatus.cs"],
+      "string",
+      "Models/NestedStatus.cs should be emitted",
+    );
+    match(
+      result.outputs["Models/NestedStatus.cs"],
+      /enum NestedStatus/,
       "Models/NestedStatus.cs should contain enum NestedStatus",
     );
   });
@@ -76,41 +75,71 @@ describe("emitter", () => {
     `);
 
     const iUsers = result.outputs["Operations/IUsers.cs"];
-    strictEqual(typeof iUsers, "string", "Operations/IUsers.cs should be emitted");
-    strictEqual(iUsers.includes("public interface IUsers"), true, "IUsers interface should be declared");
     strictEqual(
-      iUsers.includes("Task<") && iUsers.includes("ListAsync") && iUsers.includes("CancellationToken cancellationToken = default"),
-      true,
+      typeof iUsers,
+      "string",
+      "Operations/IUsers.cs should be emitted",
+    );
+    match(
+      iUsers,
+      /public interface IUsers/,
+      "IUsers interface should be declared",
+    );
+    match(
+      iUsers,
+      /Task<|ListAsync|CancellationToken cancellationToken = default/,
       "IUsers should declare async methods with CancellationToken",
     );
 
     const controller = result.outputs["Controllers/UsersController.cs"];
-    strictEqual(typeof controller, "string", "Controllers/UsersController.cs should be emitted");
-    strictEqual(controller.includes("public partial class UsersController"), true, "Controller should be partial class");
-    strictEqual(controller.includes("IUsers operations"), true, "Controller should take IUsers in constructor");
-    strictEqual(controller.includes("_operations"), true, "Controller should store operations in field");
     strictEqual(
-      controller.includes("CancellationToken cancellationToken") && controller.includes("await _operations."),
-      true,
+      typeof controller,
+      "string",
+      "Controllers/UsersController.cs should be emitted",
+    );
+    match(
+      controller,
+      /public partial class UsersController/,
+      "Controller should be partial class",
+    );
+    match(
+      controller,
+      /IUsers operations/,
+      "Controller should take IUsers in constructor",
+    );
+    match(
+      controller,
+      /_operations/,
+      "Controller should store operations in field",
+    );
+    match(
+      controller,
+      /CancellationToken cancellationToken/,
       "Controller actions should take CancellationToken and call operations",
     );
-    strictEqual(controller.includes("return Ok(result)") || controller.includes("return Ok(result);"), true, "Controller should return Ok(result)");
+    match(
+      controller,
+      /await _operations\./,
+      "Controller actions should await operations",
+    );
+    match(
+      controller,
+      /return Ok\(result\)/,
+      "Controller should return Ok(result)",
+    );
   });
-});
 
+  it("returns marked entities from compile", async () => {
+    const { Foo } = await CompileTester.compile(t.code`
+      model ${t.model("Foo")} {}
+    `);
+    strictEqual(Foo.name, "Foo");
+  });
 
-// Check compile works and returns marked entities
-it("compile returns marked entities", async () => {
-  const { Foo } = await CompileTester.compile(t.code`
-    model ${t.model("Foo")} {}
-  `);
-  strictEqual(Foo.name, "Foo");
-});
-
-// Check diagnose runs
-it("diagnose runs", async () => {
-  const diagnostics = await CompileTester.diagnose(`
+  it("returns diagnostics from diagnose", async () => {
+    const diagnostics = await CompileTester.diagnose(`
       model Bar {}
-  `);
-  strictEqual(Array.isArray(diagnostics), true);
+    `);
+    strictEqual(Array.isArray(diagnostics), true);
+  });
 });
