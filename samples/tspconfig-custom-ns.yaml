@@ -1,0 +1,12 @@
+# TypeSpec config for testing custom namespace generation
+# Demonstrates how to configure custom namespaces for the emitter
+
+output-dir: "{cwd}/tsp-output/custom-namespace"
+emit:
+  - ..
+options:
+  http-server-aspnet:
+    namespace:
+      models: "MyApp.Api.Models"
+      operations: "MyApp.Api.Operations"
+      controllers: "MyApp.Api.Controllers"
