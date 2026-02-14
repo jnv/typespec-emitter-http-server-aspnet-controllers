@@ -1,4 +1,4 @@
-import { strictEqual } from "node:assert";
+import { match, doesNotMatch, strictEqual } from "node:assert/strict";
 import { describe, it } from "vitest";
 import { Tester } from "./test-host.js";
 
@@ -26,21 +26,21 @@ describe("response headers", () => {
       "Controllers/ItemsController.cs should be emitted",
     );
 
-    strictEqual(
-      controller.includes('Response.Headers["Link"]'),
-      true,
+    match(
+      controller,
+      /Response\.Headers\["Link"\]/,
       'Controller should set Response.Headers["Link"]',
     );
 
-    strictEqual(
-      controller.includes("result.Link is not null"),
-      true,
+    match(
+      controller,
+      /result\.Link is not null/,
       "Controller should null-check optional header property",
     );
 
-    strictEqual(
-      controller.includes("return Ok(result)"),
-      true,
+    match(
+      controller,
+      /return Ok\(result\)/,
       "Controller should return Ok(result)",
     );
   });
@@ -68,15 +68,15 @@ describe("response headers", () => {
       "Controllers/ThingsController.cs should be emitted",
     );
 
-    strictEqual(
-      controller.includes('Response.Headers["ETag"]'),
-      true,
+    match(
+      controller,
+      /Response\.Headers\["ETag"\]/,
       'Controller should set Response.Headers["ETag"]',
     );
 
-    strictEqual(
-      controller.includes("result.Etag is not null"),
-      false,
+    doesNotMatch(
+      controller,
+      /result\.Etag is not null/,
       "Controller should not null-check required header property",
     );
   });
@@ -106,21 +106,21 @@ describe("response headers", () => {
       "Controllers/ResourcesController.cs should be emitted",
     );
 
-    strictEqual(
-      controller.includes('Response.Headers["Link"]'),
-      true,
+    match(
+      controller,
+      /Response\.Headers\["Link"\]/,
       "Controller should set Link header",
     );
 
-    strictEqual(
-      controller.includes('Response.Headers["X-Request-Id"]'),
-      true,
+    match(
+      controller,
+      /Response\.Headers\["X-Request-Id"\]/,
       "Controller should set X-Request-Id header",
     );
 
-    strictEqual(
-      controller.includes('Response.Headers["X-Total-Count"]'),
-      true,
+    match(
+      controller,
+      /Response\.Headers\["X-Total-Count"\]/,
       "Controller should set X-Total-Count header",
     );
   });
@@ -148,9 +148,9 @@ describe("response headers", () => {
       "Controllers/UsersController.cs should be emitted",
     );
 
-    strictEqual(
-      controller.includes("Response.Headers"),
-      false,
+    doesNotMatch(
+      controller,
+      /Response\.Headers/,
       "Controller should not set any Response.Headers when no response headers exist",
     );
   });
@@ -177,9 +177,9 @@ describe("response headers", () => {
       "string",
       "Operations/IItems.cs should be emitted",
     );
-    strictEqual(
-      iItems.includes("ItemListResult"),
-      true,
+    match(
+      iItems,
+      /ItemListResult/,
       "Interface should return the full model type including header properties",
     );
   });
