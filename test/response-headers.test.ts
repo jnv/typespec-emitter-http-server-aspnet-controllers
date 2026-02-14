@@ -155,7 +155,7 @@ describe("response headers", () => {
     );
   });
 
-  it("operations interface return type includes header properties", async () => {
+  it("includes the full model type in the operations interface", async () => {
     const result = await Tester.compile(`
       import "@typespec/http";
       using TypeSpec.Http;
