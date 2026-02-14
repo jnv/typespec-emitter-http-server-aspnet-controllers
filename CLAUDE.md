@@ -47,6 +47,7 @@ When building C# output with `@alloy-js/csharp`, use these building blocks (full
 - **Project structure**: `Namespace`, `SourceFile` (`path`, `using`), `UsingDirective`; optionally `CsprojFile` for .csproj.
 - **Type declarations**: `ClassDeclaration`, `StructDeclaration`, `RecordDeclaration`, `InterfaceDeclaration`, `EnumDeclaration`. This project uses emitter-framework’s `ClassDeclaration`/`EnumDeclaration` for models/enums; use `cs.ClassDeclaration` for custom types (e.g. controllers).
 - **Members**: `Method`, `Property`, `Field`, `Constructor`.
+- **Statements & expressions**: `IfStatement` (with `ElseIfClause`, `ElseClause`), `VarDeclaration` (renders `var name = value;`), `InvocationExpression` (renders `target(args)` — no semicolon), `AccessExpression` / `AccessExpression.Part` (member access, indexer, nullable chains). Also `access()` fluent builder from `@alloy-js/csharp` for chaining `.member()`, `.index()`, `.call()`.
 - **Attributes**: `Attribute`, `Attributes`.
 - **Naming**: `createCSharpNamePolicy()` / `useCSharpNamePolicy()`; pass element type to `getName()`. Common element types: `"class"`, `"enum"`, `"enum-member"`, `"interface"`, `"class-method"`, `"class-property"`, `"parameter"`, `"namespace"`. Note: use `"class-property"` (not `"property"`) for C# property PascalCase naming; unrecognized element types fall through to camelCase.
 - **Documentation** (when needed): `DocComment`, `FromMarkdown`, `Region`.
@@ -87,12 +88,16 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
   const doc = operationDoc ? <cs.DocSummary>...</cs.DocSummary> : undefined;
   ```
 
+- **Statement formatting**: Use `<StatementList>` from `@alloy-js/core` to join multiple statements with semicolons and hardlines. Use `<For each={items} hardline>` for declarative iteration with proper line separation.
+
+- **Symbolic references with `refkey`**: Use `refkey(object)` from `@alloy-js/core` to create stable references between declarations. Assign a `refkey` prop on declarations (e.g. `<cs.InterfaceDeclaration refkey={refkey(container)}>`) and use the same `refkey(container)` elsewhere as a `Children` value to produce a resolved name reference. Alloy handles name resolution automatically.
+
 - **Imperative logic**: Use standard JavaScript for building up data structures, accumulating values, or complex logic that doesn't involve JSX rendering. Not everything needs to be declarative.
 
 **Examples in this codebase**:
 - `src/emitter.tsx`: Uses `<Show>` to conditionally render controller/operations namespaces
-- `src/components/controller.tsx`: Uses `<Show>` for conditional method bodies and attributes
-- `src/components/operations-interface.tsx`: Uses ternary for simple doc assignment
+- `src/components/controller.tsx`: Uses `<Show>` for conditional method bodies, `cs.IfStatement` + `access()` for response header logic, `cs.VarDeclaration` for variable declarations, `refkey(container)` to reference the operations interface, `<For>` for iterating response headers
+- `src/components/operations-interface.tsx`: Uses ternary for simple doc assignment, `refkey(container)` on interface declaration
 
 ## Key paths
 

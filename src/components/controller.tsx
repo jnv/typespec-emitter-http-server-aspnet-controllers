@@ -1,6 +1,7 @@
 import * as cs from "@alloy-js/csharp";
+import { access } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
-import { code, List, Match, Show, Switch } from "@alloy-js/core";
+import { code, For, List, refkey, Show, StatementList } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
@@ -22,6 +23,17 @@ export interface ControllerDeclarationProps {
   namePolicy?: NamePolicyLike;
 }
 
+// FIXME: Not if there's a better alternative for this in Alloy
+function csharpStringLiteral(value: Children): Children {
+  return (
+    <>
+      {'"'}
+      {value}
+      {'"'}
+    </>
+  );
+}
+
 /**
  * Renders an ASP.NET Core controller class for a group of HTTP operations (same container).
  * The controller injects the operations interface and delegates each action to it (mediator pattern).
@@ -37,21 +49,13 @@ export function ControllerDeclaration(
     "class",
   );
   const controllerName = containerClassName + "Controller";
-  const interfaceName = "I" + containerClassName;
   const operationsFieldName = "_operations";
   const containerRoute = getContainerRoutePath(program, container);
   const routeTemplateValue = containerRoute?.replace(/^\//, "") ?? "controller";
-  const routeTemplateArg: Children = (
-    <>
-      {'"'}
-      {routeTemplateValue}
-      {'"'}
-    </>
-  );
 
   const constructorParam = {
     name: "operations",
-    type: interfaceName as Children,
+    type: refkey(container) as Children,
   };
 
   const methods: Children[] = [];
@@ -106,10 +110,19 @@ export function ControllerDeclaration(
     const returnType: Children = isVoidType(op.operation.returnType) ? (
       "Task<IActionResult>"
     ) : (
-      <>
-        {"Task<ActionResult<"} <TypeExpression type={op.operation.returnType} />{" "}
-        {">>"}
-      </>
+      <cs.AccessExpression>
+        <cs.AccessExpression.Part
+          id="Task"
+          typeArgs={[
+            <cs.AccessExpression>
+              <cs.AccessExpression.Part
+                id="ActionResult"
+                typeArgs={[<TypeExpression type={op.operation.returnType} />]}
+              />
+            </cs.AccessExpression>,
+          ]}
+        />
+      </cs.AccessExpression>
     );
 
     const verbAttr = (
@@ -119,43 +132,65 @@ export function ControllerDeclaration(
       >
         <cs.Attribute
           name={info.verbAttribute}
-          args={[
-            <>
-              {'"'}
-              {info.actionRoute}
-              {'"'}
-            </>,
-          ]}
+          args={[csharpStringLiteral(info.actionRoute)]}
         />
       </Show>
     );
 
     const methodNameAsync = info.operationName + "Async";
-    const argList = [
+    const argNames: Children[] = [
       ...info.parameters.map((p) => p.name),
       "cancellationToken",
-    ].join(", ");
+    ];
     const hasReturn = !isVoidType(op.operation.returnType);
     const hasResponseHeaders = hasReturn && info.responseHeaders.length > 0;
 
-    const headerSettingCode = info.responseHeaders
-      .map((h) => {
-        if (h.isOptional) {
-          return `if (result.${h.csharpPropertyName} != null)\n    Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
-        }
-        return `Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
-      })
-      .join("\n");
+    const headerStatements = (
+      <For each={info.responseHeaders} hardline>
+        {(h) => {
+          const resultProp = access("result").member(h.csharpPropertyName);
+          const headerAssign = (
+            <>
+              {access("Response")
+                .member("Headers")
+                .index([csharpStringLiteral(h.httpHeaderName)])}{" "}
+              = {resultProp}
+            </>
+          );
+
+          return (
+            <Show when={h.isOptional} fallback={<>{headerAssign};</>}>
+              <cs.IfStatement condition={<>{resultProp} != null</>}>
+                {headerAssign};
+              </cs.IfStatement>
+            </Show>
+          );
+        }}
+      </For>
+    );
+
+    const serviceCall = access(operationsFieldName).call(
+      methodNameAsync,
+      argNames,
+    );
 
     const methodBody: Children = (
       <Show
         when={hasReturn}
-        fallback={code`await ${operationsFieldName}.${methodNameAsync}(${argList});
-return NoContent();`}
+        fallback={
+          <StatementList>
+            <>await {serviceCall}</>
+            {code`return NoContent()`}
+          </StatementList>
+        }
       >
-        {code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});`}
-        <Show when={hasResponseHeaders}>{code`${headerSettingCode}`}</Show>
-        {code`return Ok(result);`}
+        <List hardline>
+          <cs.VarDeclaration name="result">
+            await {serviceCall}
+          </cs.VarDeclaration>
+          <Show when={hasResponseHeaders}>{headerStatements}</Show>
+          {code`return Ok(result);`}
+        </List>
       </Show>
     );
 
@@ -194,7 +229,10 @@ return NoContent();`}
       baseType={<>ControllerBase</>}
       attributes={[
         <cs.Attribute name="ApiController" />,
-        <cs.Attribute name="Route" args={[routeTemplateArg]} />,
+        <cs.Attribute
+          name="Route"
+          args={[csharpStringLiteral(routeTemplateValue)]}
+        />,
       ]}
     >
       <List doubleHardline>
@@ -202,7 +240,7 @@ return NoContent();`}
           private
           readonly
           name={operationsFieldName}
-          type={interfaceName as Children}
+          type={refkey(container) as Children}
         />
         <cs.Constructor public parameters={[constructorParam]}>
           {code`${operationsFieldName} = operations;`}
