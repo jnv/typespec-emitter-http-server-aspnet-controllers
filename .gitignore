@@ -1,6 +1,5 @@
 # Default TypeSpec output
 tsp-output/
-tsp-output-*/
 dist/
 
 # Dependency directories
