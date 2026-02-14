@@ -4,3 +4,6 @@ dist/
 
 # Dependency directories
 node_modules/
+
+# Claude
+.claude/*.local.*
