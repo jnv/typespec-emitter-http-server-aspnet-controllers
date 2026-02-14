@@ -56,7 +56,7 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
             return (
               <cs.SourceFile
                 path={`Operations/${interfaceName}.cs`}
-                using={[modelsNamespace, "System.Threading", "System.Threading.Tasks"]}
+                using={[modelsNamespace]}
               >
                 <OperationsInterfaceDeclaration
                   program={program}
@@ -78,8 +78,6 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
                   "Microsoft.AspNetCore.Mvc",
                   modelsNamespace,
                   operationsNamespace,
-                  "System.Threading",
-                  "System.Threading.Tasks",
                 ]}
               >
                 <ControllerDeclaration

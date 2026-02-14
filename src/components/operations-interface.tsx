@@ -1,4 +1,6 @@
 import * as cs from "@alloy-js/csharp";
+import { Threading } from "@alloy-js/csharp/global/System";
+import { Tasks } from "@alloy-js/csharp/global/System/Threading";
 import type { Children } from "@alloy-js/core";
 import { List, refkey, Show } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
@@ -34,7 +36,7 @@ function buildInterfaceMethodParams(
   }
   params.push({
     name: "cancellationToken",
-    type: "CancellationToken",
+    type: Threading.CancellationToken as Children,
     default: <>default</>,
   });
   return params;
@@ -62,13 +64,14 @@ export function OperationsInterfaceDeclaration(
     const paramDescriptors = buildInterfaceMethodParams(info);
 
     const returnType: Children = isVoidType(op.operation.returnType)
-      ? "Task"
+      ? (Tasks.Task as Children)
       : (
-        <>
-          {"Task<"}
-          <TypeExpression type={op.operation.returnType} />
-          {">"}
-        </>
+        <cs.AccessExpression>
+          <cs.AccessExpression.Part
+            refkey={Tasks.Task}
+            typeArgs={[<TypeExpression type={op.operation.returnType} />]}
+          />
+        </cs.AccessExpression>
       );
 
     const operationDoc = $.type.getDoc(op.operation);

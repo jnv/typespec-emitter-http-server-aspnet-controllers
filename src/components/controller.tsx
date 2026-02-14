@@ -1,5 +1,7 @@
 import * as cs from "@alloy-js/csharp";
 import { access } from "@alloy-js/csharp";
+import { Threading } from "@alloy-js/csharp/global/System";
+import { Tasks } from "@alloy-js/csharp/global/System/Threading";
 import type { Children } from "@alloy-js/core";
 import { code, For, List, refkey, Show, StatementList } from "@alloy-js/core";
 import type { Program } from "@typespec/compiler";
@@ -103,16 +105,21 @@ export function ControllerDeclaration(
     }
     paramDescriptors.push({
       name: "cancellationToken",
-      type: "CancellationToken" as Children,
+      type: Threading.CancellationToken as Children,
       attributes: undefined,
     });
 
     const returnType: Children = isVoidType(op.operation.returnType) ? (
-      "Task<IActionResult>"
+      <cs.AccessExpression>
+        <cs.AccessExpression.Part
+          refkey={Tasks.Task}
+          typeArgs={["IActionResult"]}
+        />
+      </cs.AccessExpression>
     ) : (
       <cs.AccessExpression>
         <cs.AccessExpression.Part
-          id="Task"
+          refkey={Tasks.Task}
           typeArgs={[
             <cs.AccessExpression>
               <cs.AccessExpression.Part
