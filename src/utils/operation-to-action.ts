@@ -1,10 +1,11 @@
-import type { Program, Type } from "@typespec/compiler";
+import type { ModelProperty, Program, Type } from "@typespec/compiler";
 import { getRoutePath } from "@typespec/http";
 import type {
   HttpOperation,
   HttpOperationParameter,
   HttpOperationParameters,
   HttpPayloadBody,
+  HttpStatusCodeRange,
   HttpVerb,
 } from "@typespec/http";
 import type { OperationContainer } from "@typespec/http";
@@ -39,6 +40,17 @@ export function getBodyType(body: HttpPayloadBody): Type | undefined {
   return undefined;
 }
 
+export interface ResponseHeaderInfo {
+  /** HTTP header name as specified in @header (e.g. "Link", "ETag") */
+  httpHeaderName: string;
+  /** TypeSpec property name (e.g. "link") */
+  propertyName: string;
+  /** C# PascalCase property name (e.g. "Link") */
+  csharpPropertyName: string;
+  /** Whether the property is optional (determines if null-check is needed) */
+  isOptional: boolean;
+}
+
 export interface ActionMethodInfo {
   operationName: string;
   verb: HttpVerb;
@@ -46,6 +58,7 @@ export interface ActionMethodInfo {
   actionRoute: string;
   parameters: ActionParameter[];
   hasBody: boolean;
+  responseHeaders: ResponseHeaderInfo[];
 }
 
 const verbToAttribute: Record<HttpVerb, string> = {
@@ -131,6 +144,8 @@ export function getActionMethodInfo(
   const verbAttribute = getVerbAttribute(operation.verb);
   const actionRoute = getActionRoute(program, operation, containerRoute);
 
+  const responseHeaders = extractResponseHeaders(operation, namePolicy);
+
   return {
     operationName,
     verb: operation.verb,
@@ -138,7 +153,53 @@ export function getActionMethodInfo(
     actionRoute,
     parameters,
     hasBody: !!body,
+    responseHeaders,
   };
+}
+
+function isErrorStatusCode(
+  statusCodes: HttpStatusCodeRange | number | "*",
+): boolean {
+  if (statusCodes === "*") return false;
+  if (typeof statusCodes === "number") return statusCodes >= 400;
+  return statusCodes.start >= 400;
+}
+
+/**
+ * Extract response header metadata from an HttpOperation's responses.
+ * Collects headers from non-error responses, deduplicated by HTTP header name.
+ */
+function extractResponseHeaders(
+  operation: HttpOperation,
+  namePolicy: NamePolicyLike,
+): ResponseHeaderInfo[] {
+  const headers: ResponseHeaderInfo[] = [];
+  const seen = new Set<string>();
+
+  for (const response of operation.responses) {
+    if (isErrorStatusCode(response.statusCodes)) continue;
+
+    for (const content of response.responses) {
+      if (!content.headers) continue;
+      for (const [httpHeaderName, modelProperty] of Object.entries(
+        content.headers,
+      )) {
+        if (seen.has(httpHeaderName)) continue;
+        seen.add(httpHeaderName);
+        headers.push({
+          httpHeaderName,
+          propertyName: modelProperty.name,
+          csharpPropertyName: namePolicy.getName(
+            modelProperty.name,
+            "class-property",
+          ),
+          isOptional: modelProperty.optional,
+        });
+      }
+    }
+  }
+
+  return headers;
 }
 
 function getBodyParameterName(

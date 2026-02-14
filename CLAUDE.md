@@ -46,7 +46,7 @@ When building C# output with `@alloy-js/csharp`, use these building blocks (full
 - **Type declarations**: `ClassDeclaration`, `StructDeclaration`, `RecordDeclaration`, `InterfaceDeclaration`, `EnumDeclaration`. This project uses emitter-framework’s `ClassDeclaration`/`EnumDeclaration` for models/enums; use `cs.ClassDeclaration` for custom types (e.g. controllers).
 - **Members**: `Method`, `Property`, `Field`, `Constructor`.
 - **Attributes**: `Attribute`, `Attributes`.
-- **Naming**: `createCSharpNamePolicy()` / `useCSharpNamePolicy()`; pass element type (e.g. `"class"`, `"enum"`) to `getName()`.
+- **Naming**: `createCSharpNamePolicy()` / `useCSharpNamePolicy()`; pass element type to `getName()`. Common element types: `"class"`, `"enum"`, `"enum-member"`, `"interface"`, `"class-method"`, `"class-property"`, `"parameter"`, `"namespace"`. Note: use `"class-property"` (not `"property"`) for C# property PascalCase naming; unrecognized element types fall through to camelCase.
 - **Documentation** (when needed): `DocComment`, `FromMarkdown`, `Region`.
 
 ### Declarative patterns with Alloy Core

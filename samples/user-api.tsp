@@ -19,9 +19,20 @@ model Address {
   country: string;
 }
 
+model UserListResponse {
+  items: User[];
+  @header("X-Request-Id") requestId?: string;
+  @header("X-Total-Count") totalCount?: string;
+}
+
+model UserResponse {
+  user: User;
+  @header("ETag") etag: string;
+}
+
 @route("/users")
 interface Users {
-  @get list(): User[];
-  @get get(@path id: int64): User;
+  @get list(): UserListResponse;
+  @get get(@path id: int64): UserResponse;
   @post create(@body user: User): User;
 }

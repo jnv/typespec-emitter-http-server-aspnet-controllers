@@ -104,14 +104,30 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
     const methodNameAsync = info.operationName + "Async";
     const argList = [...info.parameters.map((p) => p.name), "cancellationToken"].join(", ");
     const hasReturn = !isVoidType(op.operation.returnType);
+    const hasResponseHeaders = hasReturn && info.responseHeaders.length > 0;
+
+    const headerSettingCode = info.responseHeaders.map((h) => {
+      if (h.isOptional) {
+        return `if (result.${h.csharpPropertyName} != null)\n    Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
+      }
+      return `Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
+    }).join("\n");
+
     const methodBody: Children = (
       <Show
         when={hasReturn}
         fallback={code`await ${operationsFieldName}.${methodNameAsync}(${argList});
 return NoContent();`}
       >
-        {code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
+        <Show
+          when={hasResponseHeaders}
+          fallback={code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
 return Ok(result);`}
+        >
+          {code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
+${headerSettingCode}
+return Ok(result);`}
+        </Show>
       </Show>
     );
 

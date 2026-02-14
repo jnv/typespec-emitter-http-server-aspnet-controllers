@@ -52,15 +52,10 @@ model Reservation {
   state: reservationState;
 }
 
-model ListLinks is Record<url> {
-  next?: url;
-  prev?: url;
-}
-
 model ReservationListResult {
   @pageItems results: Reservation[];
   @continuationToken nextPageToken?: string;
-  @header("Link") link?: LinkHeader<ListLinks>;
+  @header("Link") link?: string;
 }
 
 @route("/reservations")
