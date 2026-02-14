@@ -34,7 +34,7 @@ function ResponseHeaderStatements(
 
         return (
           <Show when={h.isOptional} fallback={<>{headerAssign};</>}>
-            <cs.IfStatement condition={<>{resultProp} != null</>}>
+            <cs.IfStatement condition={<>{resultProp} is not null</>}>
               {headerAssign};
             </cs.IfStatement>
           </Show>
@@ -78,9 +78,7 @@ export function ActionMethodBody(props: ActionMethodBodyProps): Children {
       }
     >
       <List hardline>
-        <cs.VarDeclaration name="result">
-          await {serviceCall}
-        </cs.VarDeclaration>
+        <cs.VarDeclaration name="result">await {serviceCall}</cs.VarDeclaration>
         <Show when={hasResponseHeaders}>
           <ResponseHeaderStatements headers={info.responseHeaders} />
         </Show>

@@ -20,16 +20,20 @@ describe("response headers", () => {
     `);
 
     const controller = result.outputs["Controllers/ItemsController.cs"];
-    strictEqual(typeof controller, "string", "Controllers/ItemsController.cs should be emitted");
+    strictEqual(
+      typeof controller,
+      "string",
+      "Controllers/ItemsController.cs should be emitted",
+    );
 
     strictEqual(
       controller.includes('Response.Headers["Link"]'),
       true,
-      "Controller should set Response.Headers[\"Link\"]",
+      'Controller should set Response.Headers["Link"]',
     );
 
     strictEqual(
-      controller.includes("result.Link != null"),
+      controller.includes("result.Link is not null"),
       true,
       "Controller should null-check optional header property",
     );
@@ -58,16 +62,20 @@ describe("response headers", () => {
     `);
 
     const controller = result.outputs["Controllers/ThingsController.cs"];
-    strictEqual(typeof controller, "string", "Controllers/ThingsController.cs should be emitted");
+    strictEqual(
+      typeof controller,
+      "string",
+      "Controllers/ThingsController.cs should be emitted",
+    );
 
     strictEqual(
       controller.includes('Response.Headers["ETag"]'),
       true,
-      "Controller should set Response.Headers[\"ETag\"]",
+      'Controller should set Response.Headers["ETag"]',
     );
 
     strictEqual(
-      controller.includes("result.Etag != null"),
+      controller.includes("result.Etag is not null"),
       false,
       "Controller should not null-check required header property",
     );
@@ -92,7 +100,11 @@ describe("response headers", () => {
     `);
 
     const controller = result.outputs["Controllers/ResourcesController.cs"];
-    strictEqual(typeof controller, "string", "Controllers/ResourcesController.cs should be emitted");
+    strictEqual(
+      typeof controller,
+      "string",
+      "Controllers/ResourcesController.cs should be emitted",
+    );
 
     strictEqual(
       controller.includes('Response.Headers["Link"]'),
@@ -130,7 +142,11 @@ describe("response headers", () => {
     `);
 
     const controller = result.outputs["Controllers/UsersController.cs"];
-    strictEqual(typeof controller, "string", "Controllers/UsersController.cs should be emitted");
+    strictEqual(
+      typeof controller,
+      "string",
+      "Controllers/UsersController.cs should be emitted",
+    );
 
     strictEqual(
       controller.includes("Response.Headers"),
@@ -156,7 +172,11 @@ describe("response headers", () => {
     `);
 
     const iItems = result.outputs["Operations/IItems.cs"];
-    strictEqual(typeof iItems, "string", "Operations/IItems.cs should be emitted");
+    strictEqual(
+      typeof iItems,
+      "string",
+      "Operations/IItems.cs should be emitted",
+    );
     strictEqual(
       iItems.includes("ItemListResult"),
       true,
