@@ -74,11 +74,7 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
             return (
               <cs.SourceFile
                 path={`Controllers/${controllerName}.cs`}
-                using={[
-                  "Microsoft.AspNetCore.Mvc",
-                  modelsNamespace,
-                  operationsNamespace,
-                ]}
+                using={[modelsNamespace, operationsNamespace]}
               >
                 <ControllerDeclaration
                   program={program}

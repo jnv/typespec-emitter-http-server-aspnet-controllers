@@ -10,6 +10,7 @@ import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
 import type { OperationContainer } from "@typespec/http";
 import { useTsp } from "@typespec/emitter-framework";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { AspNetMvc } from "../lib/aspnet-mvc.js";
 import type { NamePolicyLike } from "../utils/operation-to-action.js";
 import {
   getActionMethodInfo,
@@ -84,16 +85,16 @@ export function ControllerDeclaration(
       let attribute: Children | undefined;
 
       if (ap.attribute === "FromRoute") {
-        attribute = <cs.Attribute name="FromRoute" />;
+        attribute = <cs.Attribute name={AspNetMvc.FromRouteAttribute} />;
       } else if (ap.attribute === "FromQuery") {
-        attribute = <cs.Attribute name="FromQuery" />;
+        attribute = <cs.Attribute name={AspNetMvc.FromQueryAttribute} />;
       } else if (ap.attribute === "FromBody") {
-        attribute = <cs.Attribute name="FromBody" />;
+        attribute = <cs.Attribute name={AspNetMvc.FromBodyAttribute} />;
       } else if (ap.attribute === "FromHeader") {
         attribute = ap.headerName ? (
-          <cs.Attribute name="FromHeader" args={[ap.headerName]} />
+          <cs.Attribute name={AspNetMvc.FromHeaderAttribute} args={[ap.headerName]} />
         ) : (
-          <cs.Attribute name="FromHeader" />
+          <cs.Attribute name={AspNetMvc.FromHeaderAttribute} />
         );
       }
 
@@ -113,7 +114,7 @@ export function ControllerDeclaration(
       <cs.AccessExpression>
         <cs.AccessExpression.Part
           refkey={Tasks.Task}
-          typeArgs={["IActionResult"]}
+          typeArgs={[AspNetMvc.IActionResult as Children]}
         />
       </cs.AccessExpression>
     ) : (
@@ -123,7 +124,7 @@ export function ControllerDeclaration(
           typeArgs={[
             <cs.AccessExpression>
               <cs.AccessExpression.Part
-                id="ActionResult"
+                refkey={AspNetMvc.ActionResult}
                 typeArgs={[<TypeExpression type={op.operation.returnType} />]}
               />
             </cs.AccessExpression>,
@@ -233,11 +234,11 @@ export function ControllerDeclaration(
       public
       partial
       name={controllerName}
-      baseType={<>ControllerBase</>}
+      baseType={AspNetMvc.ControllerBase as Children}
       attributes={[
-        <cs.Attribute name="ApiController" />,
+        <cs.Attribute name={AspNetMvc.ApiControllerAttribute} />,
         <cs.Attribute
-          name="Route"
+          name={AspNetMvc.RouteAttribute}
           args={[csharpStringLiteral(routeTemplateValue)]}
         />,
       ]}

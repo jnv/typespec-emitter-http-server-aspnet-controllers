@@ -1,3 +1,4 @@
+import type { Refkeyable } from "@alloy-js/core";
 import type { ModelProperty, Program, Type } from "@typespec/compiler";
 import { getRoutePath } from "@typespec/http";
 import type {
@@ -9,6 +10,7 @@ import type {
   HttpVerb,
 } from "@typespec/http";
 import type { OperationContainer } from "@typespec/http";
+import { AspNetMvc } from "../lib/aspnet-mvc.js";
 
 export interface NamePolicyLike {
   getName(name: string, element: string | undefined): string;
@@ -54,26 +56,26 @@ export interface ResponseHeaderInfo {
 export interface ActionMethodInfo {
   operationName: string;
   verb: HttpVerb;
-  verbAttribute: string;
+  verbAttribute: Refkeyable;
   actionRoute: string;
   parameters: ActionParameter[];
   hasBody: boolean;
   responseHeaders: ResponseHeaderInfo[];
 }
 
-const verbToAttribute: Record<HttpVerb, string> = {
-  get: "HttpGet",
-  post: "HttpPost",
-  put: "HttpPut",
-  patch: "HttpPatch",
-  delete: "HttpDelete",
-  head: "HttpHead",
+const verbToAttribute: Record<HttpVerb, Refkeyable> = {
+  get: AspNetMvc.HttpGetAttribute,
+  post: AspNetMvc.HttpPostAttribute,
+  put: AspNetMvc.HttpPutAttribute,
+  patch: AspNetMvc.HttpPatchAttribute,
+  delete: AspNetMvc.HttpDeleteAttribute,
+  head: AspNetMvc.HttpHeadAttribute,
 };
 
 /**
- * Get the HTTP verb attribute name for ASP.NET (e.g. "HttpGet").
+ * Get the HTTP verb attribute reference for ASP.NET (e.g. AspNetMvc.HttpGetAttribute).
  */
-export function getVerbAttribute(verb: HttpVerb): string {
+export function getVerbAttribute(verb: HttpVerb): Refkeyable {
   return verbToAttribute[verb];
 }
 
