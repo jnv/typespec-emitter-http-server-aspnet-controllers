@@ -24,6 +24,8 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
   Do not use inline type imports (e.g. `import("@typespec/compiler").Type`). Use top-level `import type { Type } from "..."` at the top of the file and refer to the type by name.
 - **Separate type and value imports**  
   Use separate statements for type-only and value imports. Prefer `import type { X } from "..."` for types and `import { a, b } from "..."` for values; do not mix `type X` and value bindings in the same `import` (e.g. avoid `import { type Children, List }`).
+- **File naming conventions**  
+  All files must use **kebab-case** naming, including TypeScript (`.ts`), JSX (`.tsx`), and all other file types. Examples: `extract-models.ts`, `operations-interface.tsx`, `type-mapping.ts`, `test-host.ts`. This applies to both source files and test files.
 
 ## Preferences for agents
 
