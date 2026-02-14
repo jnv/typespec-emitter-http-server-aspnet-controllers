@@ -1,5 +1,5 @@
 import type { Enum, Model, Namespace, Program } from "@typespec/compiler";
-import { isStdNamespace } from "@typespec/compiler";
+import { isStdNamespace, isTemplateDeclaration } from "@typespec/compiler";
 import { $ } from "@typespec/compiler/typekit";
 
 /**
@@ -20,6 +20,7 @@ function collectFromNamespace(
   const $tk = $(program);
   for (const m of namespace.models.values()) {
     if ($tk.array.is(m) || $tk.record.is(m)) continue;
+    if (isTemplateDeclaration(m)) continue;
     models.push(m);
   }
   for (const e of namespace.enums.values()) {

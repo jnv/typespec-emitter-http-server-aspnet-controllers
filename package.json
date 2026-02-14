@@ -11,7 +11,8 @@
     "@alloy-js/typescript": "^0.22.0",
     "@typespec/compiler": "latest",
     "@typespec/emitter-framework": "^0.15.0",
-    "@typespec/http": "latest"
+    "@typespec/http": "latest",
+    "@typespec/openapi": "latest"
   },
   "devDependencies": {
     "@alloy-js/cli": "0.22.0",
