@@ -26,21 +26,33 @@ export interface ControllerDeclarationProps {
  * Renders an ASP.NET Core controller class for a group of HTTP operations (same container).
  * The controller injects the operations interface and delegates each action to it (mediator pattern).
  */
-export function ControllerDeclaration(props: ControllerDeclarationProps): Children {
+export function ControllerDeclaration(
+  props: ControllerDeclarationProps,
+): Children {
   const { program, container, operations } = props;
   const namePolicy = props.namePolicy ?? cs.useCSharpNamePolicy();
   const { $ } = useTsp();
-  const containerClassName = namePolicy.getName(container.name ?? "Api", "class");
+  const containerClassName = namePolicy.getName(
+    container.name ?? "Api",
+    "class",
+  );
   const controllerName = containerClassName + "Controller";
   const interfaceName = "I" + containerClassName;
   const operationsFieldName = "_operations";
   const containerRoute = getContainerRoutePath(program, container);
   const routeTemplateValue = containerRoute?.replace(/^\//, "") ?? "controller";
   const routeTemplateArg: Children = (
-    <>{"\""}{routeTemplateValue}{"\""}</>
+    <>
+      {'"'}
+      {routeTemplateValue}
+      {'"'}
+    </>
   );
 
-  const constructorParam = { name: "operations", type: interfaceName as Children };
+  const constructorParam = {
+    name: "operations",
+    type: interfaceName as Children,
+  };
 
   const methods: Children[] = [];
 
@@ -55,9 +67,13 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
 
     for (const ap of info.parameters) {
       const type =
-        ap.attribute === "FromBody" && "type" in ap.param
-          ? <TypeExpression type={getBodyType(ap.param as unknown as HttpPayloadBody)!} />
-          : <TypeExpression type={getParamType(ap).type} />;
+        ap.attribute === "FromBody" && "type" in ap.param ? (
+          <TypeExpression
+            type={getBodyType(ap.param as unknown as HttpPayloadBody)!}
+          />
+        ) : (
+          <TypeExpression type={getParamType(ap).type} />
+        );
 
       let attribute: Children | undefined;
 
@@ -68,9 +84,11 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
       } else if (ap.attribute === "FromBody") {
         attribute = <cs.Attribute name="FromBody" />;
       } else if (ap.attribute === "FromHeader") {
-        attribute = ap.headerName
-          ? <cs.Attribute name="FromHeader" args={[ap.headerName]} />
-          : <cs.Attribute name="FromHeader" />;
+        attribute = ap.headerName ? (
+          <cs.Attribute name="FromHeader" args={[ap.headerName]} />
+        ) : (
+          <cs.Attribute name="FromHeader" />
+        );
       }
 
       paramDescriptors.push({
@@ -85,9 +103,14 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
       attributes: undefined,
     });
 
-    const returnType: Children = isVoidType(op.operation.returnType)
-      ? "Task<IActionResult>"
-      : <>{"Task<ActionResult<"} <TypeExpression type={op.operation.returnType} /> {">>"}</>;
+    const returnType: Children = isVoidType(op.operation.returnType) ? (
+      "Task<IActionResult>"
+    ) : (
+      <>
+        {"Task<ActionResult<"} <TypeExpression type={op.operation.returnType} />{" "}
+        {">>"}
+      </>
+    );
 
     const verbAttr = (
       <Show
@@ -96,22 +119,33 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
       >
         <cs.Attribute
           name={info.verbAttribute}
-          args={[<>{"\""}{info.actionRoute}{"\""}</>]}
+          args={[
+            <>
+              {'"'}
+              {info.actionRoute}
+              {'"'}
+            </>,
+          ]}
         />
       </Show>
     );
 
     const methodNameAsync = info.operationName + "Async";
-    const argList = [...info.parameters.map((p) => p.name), "cancellationToken"].join(", ");
+    const argList = [
+      ...info.parameters.map((p) => p.name),
+      "cancellationToken",
+    ].join(", ");
     const hasReturn = !isVoidType(op.operation.returnType);
     const hasResponseHeaders = hasReturn && info.responseHeaders.length > 0;
 
-    const headerSettingCode = info.responseHeaders.map((h) => {
-      if (h.isOptional) {
-        return `if (result.${h.csharpPropertyName} != null)\n    Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
-      }
-      return `Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
-    }).join("\n");
+    const headerSettingCode = info.responseHeaders
+      .map((h) => {
+        if (h.isOptional) {
+          return `if (result.${h.csharpPropertyName} != null)\n    Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
+        }
+        return `Response.Headers["${h.httpHeaderName}"] = result.${h.csharpPropertyName};`;
+      })
+      .join("\n");
 
     const methodBody: Children = (
       <Show
@@ -119,15 +153,9 @@ export function ControllerDeclaration(props: ControllerDeclarationProps): Childr
         fallback={code`await ${operationsFieldName}.${methodNameAsync}(${argList});
 return NoContent();`}
       >
-        <Show
-          when={hasResponseHeaders}
-          fallback={code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
-return Ok(result);`}
-        >
-          {code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});
-${headerSettingCode}
-return Ok(result);`}
-        </Show>
+        {code`var result = await ${operationsFieldName}.${methodNameAsync}(${argList});`}
+        <Show when={hasResponseHeaders}>{code`${headerSettingCode}`}</Show>
+        {code`return Ok(result);`}
       </Show>
     );
 
@@ -170,13 +198,16 @@ return Ok(result);`}
       ]}
     >
       <List doubleHardline>
-        <cs.Field private readonly name={operationsFieldName} type={interfaceName as Children} />
+        <cs.Field
+          private
+          readonly
+          name={operationsFieldName}
+          type={interfaceName as Children}
+        />
         <cs.Constructor public parameters={[constructorParam]}>
           {code`${operationsFieldName} = operations;`}
         </cs.Constructor>
-        <List hardline>
-          {methods}
-        </List>
+        <List hardline>{methods}</List>
       </List>
     </cs.ClassDeclaration>
   );
