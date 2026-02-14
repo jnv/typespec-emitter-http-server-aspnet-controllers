@@ -6,15 +6,17 @@ import { Output, writeOutput } from "@typespec/emitter-framework";
 import { ClassDeclaration, EnumDeclaration } from "@typespec/emitter-framework/csharp";
 import { ControllerDeclaration } from "./components/controller.jsx";
 import { OperationsInterfaceDeclaration } from "./components/operations-interface.jsx";
+import type { EmitterOptions } from "./lib.js";
 import { getHttpServices } from "./utils/extract-http-services.js";
 import { extractTypes } from "./utils/extract-types.js";
 import { groupOperationsByContainer } from "./utils/operation-to-action.js";
 
-const modelsNamespace = "Generated.Models";
-const operationsNamespace = "Generated.Operations";
-const controllersNamespace = "Generated.Controllers";
-
-export async function $onEmit(context: EmitContext) {
+export async function $onEmit(context: EmitContext<EmitterOptions>) {
+  // Read namespace configuration from options, with defaults
+  const options = context.options;
+  const modelsNamespace = options?.namespace?.models ?? "Generated.Models";
+  const operationsNamespace = options?.namespace?.operations ?? "Generated.Operations";
+  const controllersNamespace = options?.namespace?.controllers ?? "Generated.Controllers";
   const program = context.program;
   const namePolicy = cs.createCSharpNamePolicy();
   const { models, enums } = extractTypes(program);
@@ -54,7 +56,7 @@ export async function $onEmit(context: EmitContext) {
             return (
               <cs.SourceFile
                 path={`Operations/${interfaceName}.cs`}
-                using={["Generated.Models", "System.Threading", "System.Threading.Tasks"]}
+                using={[modelsNamespace, "System.Threading", "System.Threading.Tasks"]}
               >
                 <OperationsInterfaceDeclaration
                   program={program}
@@ -74,8 +76,8 @@ export async function $onEmit(context: EmitContext) {
                 path={`Controllers/${controllerName}.cs`}
                 using={[
                   "Microsoft.AspNetCore.Mvc",
-                  "Generated.Models",
-                  "Generated.Operations",
+                  modelsNamespace,
+                  operationsNamespace,
                   "System.Threading",
                   "System.Threading.Tasks",
                 ]}
