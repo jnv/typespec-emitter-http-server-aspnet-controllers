@@ -28,6 +28,8 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
   All files must use **kebab-case** naming, including TypeScript (`.ts`), JSX (`.tsx`), and all other file types. Examples: `extract-models.ts`, `operations-interface.tsx`, `type-mapping.ts`, `test-host.ts`. This applies to both source files and test files.
 - **Test naming conventions**
   Test names should be verb-first imperative phrases that describe what the test verifies. Use `it emits`, `it creates`, `it includes`, `it verifies`, etc.; avoid `it should`. Examples: `it emits controller with response headers`, `it does not emit Response.Headers when no headers exist`, `it includes the full model type in the operations interface`
+- **Test assertions**
+  Prefer appropriate assertion methods from `node:assert/strict` over generic `strictEqual`. Use `match()` for regex patterns, `doesNotMatch()` for negative patterns, `ok()` for boolean checks, and `strictEqual()` for exact value comparisons. Example: `match(controller, /Response\.Headers/, "message")` instead of `strictEqual(controller.includes("Response.Headers"), true, "message")`.
 
 ## Preferences for agents
 
@@ -101,8 +103,6 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
 - **Statement formatting**: Use `<StatementList>` from `@alloy-js/core` to join multiple statements with semicolons and hardlines. Use `<For each={items} hardline>` for declarative iteration with proper line separation.
 
 - **Symbolic references with `refkey`**: Use `refkey(object)` from `@alloy-js/core` to create stable references between declarations. Assign a `refkey` prop on declarations (e.g. `<cs.InterfaceDeclaration refkey={refkey(container)}>`) and use the same `refkey(container)` elsewhere as a `Children` value to produce a resolved name reference. Alloy handles name resolution automatically.
-
-- **Imperative logic**: Use standard JavaScript for building up data structures, accumulating values, or complex logic that doesn't involve JSX rendering. Not everything needs to be declarative.
 
 **Examples in this codebase**:
 
