@@ -16,7 +16,7 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
 | **C# / JSX output**   | [@alloy-js/core](https://www.npmjs.com/package/@alloy-js/core), [@alloy-js/csharp](https://www.npmjs.com/package/@alloy-js/csharp)             | Declarative C# code generation (JSX-style API): type declarations, members, attributes, project structure — `Namespace`, `SourceFile`, C# name policy. |
 | **Library / build**   | [@alloy-js/cli](https://www.npmjs.com/package/@alloy-js/cli), [@alloy-js/rollup-plugin](https://www.npmjs.com/package/@alloy-js/rollup-plugin) | Build and bundle the emitter (`alloy build`, Rollup + Babel for TS/JSX).                                                                               |
 | **Runtime / tests**   | Node (ESM), [Vitest](https://vitest.dev/)                                                                                                      | Run emitter as a TypeSpec library; tests use `@typespec/compiler/testing` and the local emitter.                                                       |
-| **Output**            | C# (ASP.NET Core)                                                                                                                              | Generated code targets .NET (e.g. ASP.NET Core) — models today; controllers later.                                                                     |
+| **Output**            | C# (ASP.NET Core)                                                                                                                              | Generated code targets .NET (e.g. ASP.NET Core) — models (POCOs), operations interfaces, and controllers.                                                                     |
 
 ## Code style
 
@@ -25,7 +25,7 @@ This project is a **TypeSpec code emitter** for ASP.NET Core servers. It consume
 - **Separate type and value imports**
   Use separate statements for type-only and value imports. Prefer `import type { X } from "..."` for types and `import { a, b } from "..."` for values; do not mix `type X` and value bindings in the same `import` (e.g. avoid `import { type Children, List }`).
 - **File naming conventions**
-  All files must use **kebab-case** naming, including TypeScript (`.ts`), JSX (`.tsx`), and all other file types. Examples: `extract-models.ts`, `operations-interface.tsx`, `type-mapping.ts`, `test-host.ts`. This applies to both source files and test files.
+  All files must use **kebab-case** naming, including TypeScript (`.ts`), JSX (`.tsx`), and all other file types. Examples: `extract-models.ts`, `operations-interface.tsx`, `operation-to-action.ts`, `test-host.ts`. This applies to both source files and test files.
 - **Test naming conventions**
   Test names should be verb-first imperative phrases that describe what the test verifies. Use `it emits`, `it creates`, `it includes`, `it verifies`, etc.; avoid `it should`. Examples: `it emits controller with response headers`, `it does not emit Response.Headers when no headers exist`, `it includes the full model type in the operations interface`
 - **Test assertions**
@@ -64,18 +64,35 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
 - **Conditional rendering**: Use `<Show when={condition}>` instead of `{condition && ...}` or ternaries for JSX rendering.
 
   ```tsx
-  // Prefer this:
-  <Show when={hasValue} fallback={<DefaultComponent />}>
-    <ValueComponent />
-  </Show>;
+  // from src/emitter.tsx — conditionally render namespaces only when operations exist:
+  <Show when={controllerGroups.length > 0}>
+    <cs.Namespace name={operationsNamespace}>
+      {/* ... */}
+    </cs.Namespace>
+    <cs.Namespace name={controllersNamespace}>
+      {/* ... */}
+    </cs.Namespace>
+  </Show>
 
-  // Over this:
-  {
-    hasValue ? <ValueComponent /> : <DefaultComponent />;
-  }
-  {
-    hasValue && <ValueComponent />;
-  }
+  // from src/components/controller/action-method-body.tsx — two-branch rendering with fallback:
+  <Show when={hasReturn} fallback={
+    <StatementList>
+      <>await {serviceCall}</>
+      {code`return NoContent()`}
+    </StatementList>
+  }>
+    <List hardline>
+      <cs.VarDeclaration name="result">await {serviceCall}</cs.VarDeclaration>
+      {code`return Ok(result);`}
+    </List>
+  </Show>
+
+  // from src/components/controller/action-method-body.tsx — conditional with IfStatement fallback:
+  <Show when={h.isOptional} fallback={<>{headerAssign};</>}>
+    <cs.IfStatement condition={<>{resultProp} is not null</>}>
+      {headerAssign};
+    </cs.IfStatement>
+  </Show>
   ```
 
 - **Multi-way conditionals**: Use `<Switch>` with `<Match>` for multiple conditions.
@@ -97,25 +114,50 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
 - **When ternaries are acceptable**: For simple value assignment (not JSX rendering), ternaries are fine and often clearer:
 
   ```tsx
-  const doc = operationDoc ? <cs.DocSummary>...</cs.DocSummary> : undefined;
+  // from src/components/operations-interface.tsx:
+  const operationDoc = $.type.getDoc(op.operation);
+  const doc = operationDoc ? (
+    <cs.DocSummary>
+      <cs.DocFromMarkdown markdown={operationDoc} />
+    </cs.DocSummary>
+  ) : undefined;
   ```
 
 - **Statement formatting**: Use `<StatementList>` from `@alloy-js/core` to join multiple statements with semicolons and hardlines. Use `<For each={items} hardline>` for declarative iteration with proper line separation.
 
-- **Symbolic references with `refkey`**: Use `refkey(object)` from `@alloy-js/core` to create stable references between declarations. Assign a `refkey` prop on declarations (e.g. `<cs.InterfaceDeclaration refkey={refkey(container)}>`) and use the same `refkey(container)` elsewhere as a `Children` value to produce a resolved name reference. Alloy handles name resolution automatically.
+  ```tsx
+  // from src/components/controller/controller-declaration.tsx — iterate operations:
+  <For each={operations} doubleHardline>
+    {(op) => {
+      const info = getActionMethodInfo(program, op, containerRoute, namePolicy);
+      return <cs.Method /* ... */ />;
+    }}
+  </For>
+  ```
 
-**Examples in this codebase**:
+- **Symbolic references with `refkey`**: Use `refkey(object)` from `@alloy-js/core` to create stable references between declarations. Assign a `refkey` prop on declarations and use the same `refkey()` elsewhere as a `Children` value to produce a resolved name reference. Alloy handles name resolution automatically.
 
-- `src/emitter.tsx`: Uses `<Show>` to conditionally render controller/operations namespaces
-- `src/components/controller.tsx`: Uses `<Show>` for conditional method bodies, `cs.IfStatement` + `access()` for response header logic, `cs.VarDeclaration` for variable declarations, `refkey(container)` to reference the operations interface, `<For>` for iterating response headers
-- `src/components/operations-interface.tsx`: Uses ternary for simple doc assignment, `refkey(container)` on interface declaration
+  ```tsx
+  // from src/components/operations-interface.tsx — declare with refkey:
+  <cs.InterfaceDeclaration public name={interfaceName} refkey={refkey(container)}>
+    {/* ... */}
+  </cs.InterfaceDeclaration>
+
+  // from src/components/controller/controller-declaration.tsx — reference the same container:
+  <cs.Field private readonly name={operationsFieldName}
+    type={refkey(container) as Children} />
+  ```
 
 ## Key paths
 
-- **Emitter entry**: `src/emitter.tsx` — `$onEmit`; uses `extract-models` and emitter-framework `ClassDeclaration`.
+- **Emitter entry**: `src/emitter.tsx` — `$onEmit`; extracts types and HTTP services, then renders models, operations interfaces, and controllers via JSX components.
 - **Model/type extraction**: `src/utils/extract-types.ts` — single entrypoint for models and enums (skips stdlib and array/record); `extract-models.ts` and `extract-enums.ts` are thin wrappers.
+- **HTTP service extraction**: `src/utils/extract-http-services.ts` — collects HTTP operations from all namespaces into a unified service; `src/utils/operation-to-action.ts` — converts HTTP operations to controller action descriptors (parameters, routes, response headers) and groups operations by container.
+- **Controller components**: `src/components/controller/controller-declaration.tsx` — renders the ASP.NET controller class (attributes, DI constructor, action methods); `src/components/controller/action-method-body.tsx` — renders the method body (service call, response headers, return); `src/components/controller/build-controller-params.tsx` — maps parameters to binding attributes (`FromRoute`, `FromQuery`, `FromBody`, `FromHeader`).
+- **Operations interface**: `src/components/operations-interface.tsx` — renders the operations interface (e.g. `IUsers`) with async methods and `CancellationToken`.
+- **ASP.NET library**: `src/lib/aspnet-mvc.ts` — defines ASP.NET Core MVC symbols (`ControllerBase`, `IActionResult`, route/binding/verb attributes) via `createLibrary()`.
 - **Output flattening**: All emitted models and enums are placed in a single C# namespace (`Generated.Models`). TypeSpec namespace hierarchy is not preserved; two types with the same short name in different TypeSpec namespaces would collide (same file/class name). Prefer unique type names across namespaces or document this limitation.
-- **Type mapping**: Prefer emitter-framework C# `TypeExpression` and typekits; add `src/utils/type-mapping.ts` only if framework/typekits cannot cover a case.
+- **Type mapping**: Prefer emitter-framework C# `TypeExpression` and typekits over custom type-mapping utilities.
 - **Samples**: `samples/*.tsp` + `samples/main.tsp` — sample specs; compile with `npm run build:samples` → output under `tsp-output/`.
 
 ## Commands
