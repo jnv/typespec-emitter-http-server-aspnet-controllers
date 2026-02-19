@@ -2,9 +2,15 @@ import * as cs from "@alloy-js/csharp";
 import { Show } from "@alloy-js/core";
 import type { EmitContext } from "@typespec/compiler";
 import type { HttpOperation, OperationContainer } from "@typespec/http";
-import { Output, writeOutput } from "@typespec/emitter-framework";
+import {
+  Experimental_ComponentOverrides,
+  Experimental_ComponentOverridesConfig,
+  Output,
+  writeOutput,
+} from "@typespec/emitter-framework";
 import { ClassDeclaration, EnumDeclaration } from "@typespec/emitter-framework/csharp";
 import { ControllerDeclaration } from "./components/controller.jsx";
+import { IntrinsicTypeExpression } from "./components/intrinsic-type-expression.jsx";
 import { OperationsInterfaceDeclaration } from "./components/operations-interface.jsx";
 import type { EmitterOptions } from "./lib.js";
 import { getHttpServices } from "./utils/extract-http-services.js";
@@ -33,10 +39,16 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
     }
   }
 
+  const overrides = new Experimental_ComponentOverridesConfig()
+    .forTypeKind("Intrinsic", {
+      reference: IntrinsicTypeExpression,
+    });
+
   await writeOutput(
     program,
-    <Output program={program} namePolicy={namePolicy}>
-      <cs.Namespace name={modelsNamespace}>
+    <Experimental_ComponentOverrides overrides={overrides}>
+      <Output program={program} namePolicy={namePolicy}>
+        <cs.Namespace name={modelsNamespace}>
         {enums.map((enumType) => (
           <cs.SourceFile path={`Models/${namePolicy.getName(enumType.name!, "enum")}.cs`}>
             <EnumDeclaration type={enumType} />
@@ -86,7 +98,8 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
           })}
         </cs.Namespace>
       </Show>
-    </Output>,
+      </Output>
+    </Experimental_ComponentOverrides>,
     context.emitterOutputDir,
   );
 }

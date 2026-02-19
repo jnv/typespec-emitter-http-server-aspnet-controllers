@@ -17,14 +17,8 @@ const EXPECTED_FAILURES: Set<string> = new Set([
   "response/status-code-range",
   "special-headers/repeatability",
   "type/property/optionality",
-  "type/union",
-
-  // Intrinsic types (unknown/never) — emitter-framework TypeExpression does not support these
-  "type/array",
-  "type/dictionary",
-  "type/property/additional-properties",
   "type/property/value-types",
-  "type/scalar",
+  "type/union",
 
   // UnionVariant — emitter-framework TypeExpression does not support UnionVariant
   "type/model/inheritance/enum-discriminator",
