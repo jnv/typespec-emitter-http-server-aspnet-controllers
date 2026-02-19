@@ -33,27 +33,33 @@ function collectOperationsFromNamespaceTree(
 
 /**
  * Returns all HTTP services for the program.
- * Always walks the global namespace and its sub-namespaces to find all HTTP
+ * Always walks the given namespace (or global) and its sub-namespaces to find all HTTP
  * operations, including those in nested namespaces (e.g.
  * namespace AutomationHubGateway.Api { @route("/") interface Foo { ... } }).
+ *
+ * @param rootNamespace - Optional scoped namespace (e.g. a version-projected namespace).
+ *   When omitted, walks from the global namespace.
  */
-export function getHttpServices(program: Program): [HttpService[], readonly unknown[]] {
-  const globalNs = program.getGlobalNamespaceType();
-  const [globalService, globalDiag] = getHttpService(program, globalNs);
-  const allDiag = Array.isArray(globalDiag) ? [...globalDiag] : [];
+export function getHttpServices(
+  program: Program,
+  rootNamespace?: Namespace,
+): [HttpService[], readonly unknown[]] {
+  const startNs = rootNamespace ?? program.getGlobalNamespaceType();
+  const [startService, startDiag] = getHttpService(program, startNs);
+  const allDiag = Array.isArray(startDiag) ? [...startDiag] : [];
   const seen = new Set<Operation>();
   const allOperations: HttpOperation[] = [];
-  for (const op of globalService.operations) {
+  for (const op of startService.operations) {
     seen.add(op.operation);
     allOperations.push(op);
   }
-  for (const subNs of globalNs.namespaces.values()) {
+  for (const subNs of startNs.namespaces.values()) {
     if (!isStdNamespace(subNs)) {
       collectOperationsFromNamespaceTree(program, subNs, allOperations, seen, allDiag);
     }
   }
   const mergedService: HttpService = {
-    ...globalService,
+    ...startService,
     operations: allOperations,
   };
   return [[mergedService], allDiag];

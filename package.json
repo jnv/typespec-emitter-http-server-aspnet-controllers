@@ -12,7 +12,13 @@
     "@typespec/compiler": "latest",
     "@typespec/emitter-framework": "^0.15.0",
     "@typespec/http": "latest",
-    "@typespec/openapi": "latest"
+    "@typespec/openapi": "latest",
+    "@typespec/versioning": ">=0.79.0"
+  },
+  "peerDependenciesMeta": {
+    "@typespec/versioning": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@alloy-js/cli": "0.22.0",

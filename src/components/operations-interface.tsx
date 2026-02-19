@@ -3,7 +3,7 @@ import { Threading } from "@alloy-js/csharp/global/System";
 import { Tasks } from "@alloy-js/csharp/global/System/Threading";
 import type { Children } from "@alloy-js/core";
 import { For, refkey } from "@alloy-js/core";
-import type { Program } from "@typespec/compiler";
+import type { Model, Program } from "@typespec/compiler";
 import { isVoidType } from "@typespec/compiler";
 import type { HttpOperation, HttpPayloadBody } from "@typespec/http";
 import type { OperationContainer } from "@typespec/http";
@@ -18,27 +18,53 @@ import {
   getBodyType,
   getParamType,
 } from "../utils/operation-to-action.js";
+import type { VisibilityFilteredModel } from "../utils/visibility-analysis.js";
+import { getVisibilityContextForVerb } from "../utils/visibility-analysis.js";
 
 export interface OperationsInterfaceDeclarationProps {
   program: Program;
   container: OperationContainer;
   operations: HttpOperation[];
   namePolicy?: NamePolicyLike;
+  visibilityLookup?: Map<string, VisibilityFilteredModel>;
 }
 
-function buildInterfaceMethodParams(info: {
-  parameters: ActionParameter[];
-}): Array<{ name: string; type: Children; default?: Children }> {
+function resolveBodyParamType(
+  ap: ActionParameter,
+  op: HttpOperation,
+  visibilityLookup?: Map<string, VisibilityFilteredModel>,
+): Children {
+  if (ap.attribute !== "FromBody" || !("type" in ap.param)) {
+    return <TypeExpression type={getParamType(ap).type} />;
+  }
+
+  const bodyType = getBodyType(ap.param as unknown as HttpPayloadBody);
+  if (!bodyType) {
+    return <TypeExpression type={getParamType(ap).type} />;
+  }
+
+  // Check if there's a visibility-filtered DTO for this body model + verb context
+  if (visibilityLookup && bodyType.kind === "Model" && bodyType.name) {
+    const context = getVisibilityContextForVerb(op.verb);
+    const key = `${bodyType.name}:${context}`;
+    const filtered = visibilityLookup.get(key);
+    if (filtered) {
+      return filtered.refkey as Children;
+    }
+  }
+
+  return <TypeExpression type={bodyType} />;
+}
+
+function buildInterfaceMethodParams(
+  info: { parameters: ActionParameter[] },
+  op: HttpOperation,
+  visibilityLookup?: Map<string, VisibilityFilteredModel>,
+): Array<{ name: string; type: Children; default?: Children }> {
   return [
     ...info.parameters.map((ap) => ({
       name: ap.name,
-      type: (ap.attribute === "FromBody" && "type" in ap.param ? (
-        <TypeExpression
-          type={getBodyType(ap.param as unknown as HttpPayloadBody)!}
-        />
-      ) : (
-        <TypeExpression type={getParamType(ap).type} />
-      )) as Children,
+      type: resolveBodyParamType(ap, op, visibilityLookup) as Children,
     })),
     {
       name: "cancellationToken",
@@ -55,7 +81,7 @@ function buildInterfaceMethodParams(info: {
 export function OperationsInterfaceDeclaration(
   props: OperationsInterfaceDeclarationProps,
 ): Children {
-  const { program, container, operations } = props;
+  const { program, container, operations, visibilityLookup } = props;
   const namePolicy = props.namePolicy ?? cs.useCSharpNamePolicy();
   const { $ } = useTsp();
   const interfaceName =
@@ -77,7 +103,11 @@ export function OperationsInterfaceDeclaration(
             namePolicy,
           );
           const methodName = info.operationName + "Async";
-          const paramDescriptors = buildInterfaceMethodParams(info);
+          const paramDescriptors = buildInterfaceMethodParams(
+            info,
+            op,
+            visibilityLookup,
+          );
 
           const returnType: Children = isVoidType(op.operation.returnType) ? (
             (Tasks.Task as Children)

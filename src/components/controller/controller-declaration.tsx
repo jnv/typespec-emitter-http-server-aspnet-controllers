@@ -14,6 +14,7 @@ import {
   getActionMethodInfo,
   getContainerRoutePath,
 } from "../../utils/operation-to-action.js";
+import type { VisibilityFilteredModel } from "../../utils/visibility-analysis.js";
 import { ActionMethodBody } from "./action-method-body.jsx";
 import { buildControllerParams } from "./build-controller-params.jsx";
 import { csharpStringLiteral } from "./csharp-string-literal.jsx";
@@ -23,6 +24,7 @@ export interface ControllerDeclarationProps {
   container: OperationContainer;
   operations: HttpOperation[];
   namePolicy?: NamePolicyLike;
+  visibilityLookup?: Map<string, VisibilityFilteredModel>;
 }
 
 /**
@@ -32,7 +34,7 @@ export interface ControllerDeclarationProps {
 export function ControllerDeclaration(
   props: ControllerDeclarationProps,
 ): Children {
-  const { program, container, operations } = props;
+  const { program, container, operations, visibilityLookup } = props;
   const namePolicy = props.namePolicy ?? cs.useCSharpNamePolicy();
   const { $ } = useTsp();
   const containerClassName = namePolicy.getName(
@@ -84,7 +86,7 @@ export function ControllerDeclaration(
               containerRoute,
               namePolicy,
             );
-            const paramDescriptors = buildControllerParams(info);
+            const paramDescriptors = buildControllerParams(info, op, visibilityLookup);
             const hasReturn = !isVoidType(op.operation.returnType);
 
             const returnType: Children = !hasReturn ? (
