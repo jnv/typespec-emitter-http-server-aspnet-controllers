@@ -159,11 +159,31 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
 - **Output flattening**: All emitted models and enums are placed in a single C# namespace (`Generated.Models`). TypeSpec namespace hierarchy is not preserved; two types with the same short name in different TypeSpec namespaces would collide (same file/class name). Prefer unique type names across namespaces or document this limitation.
 - **Type mapping**: Prefer emitter-framework C# `TypeExpression` and typekits over custom type-mapping utilities.
 - **Samples**: `samples/*.tsp` + `samples/main.tsp` — sample specs; compile with `npm run build:samples` → output under `tsp-output/`.
+- **HTTP specs tests**: `test/http-specs.test.ts` — compiles each `@typespec/http-specs` scenario through the emitter; `test/http-specs-test-host.ts` — tester with all libraries needed by http-specs (`@typespec/rest`, `@typespec/versioning`, `@typespec/xml`, `@typespec/spector`); `test/http-specs-utils.ts` — discovers spec `.tsp` files from the installed `@typespec/http-specs` package. Tests are dynamically generated from the installed specs. `EXPECTED_FAILURES` tracks specs that crash (unsupported types); `SKIP_SPECS` tracks specs with compiler-level issues. When adding support for a new type kind, remove the spec from `EXPECTED_FAILURES` so the test asserts output is produced.
 
 ## Commands
 
-- `npm run build` — build the emitter (Alloy).
+- `npm run build` — build the emitter (Alloy). Must run before tests (tests resolve the emitter from `dist/`).
 - `npm run build:samples` — build emitter then compile `samples/main.tsp` into `tsp-output/`.
-- `npm run test` / `npm run test:watch` — run Vitest tests (emitter behavior, compile output).
+- `npm run test` / `npm run test:watch` — run Vitest tests (emitter behavior, compile output, http-specs).
 
 When editing the emitter or adding controllers, run `npm run build:samples` and inspect `tsp-output/http-server-aspnet/` to verify generated C#.
+
+## HTTP specs coverage
+
+The `test/http-specs.test.ts` suite compiles ~60 standard HTTP scenario specs from `@typespec/http-specs` through the emitter. Current baseline:
+
+- **43 passing** — compile and produce C# output
+- **16 expected failures** — emitter crashes on unsupported TypeSpec type kinds in emitter-framework's `TypeExpression`
+- **2 skipped** — compiler-level diagnostics unrelated to the emitter
+
+### Failure categories
+
+All 16 expected failures stem from `TypeExpression` (from `@typespec/emitter-framework/csharp`) not handling certain TypeSpec type kinds. This affects both direct `TypeExpression` calls in operations/controllers and indirect calls inside emitter-framework's `ClassDeclaration`/`Property`.
+
+| Type kind | Specs affected | Root cause | Example |
+|-----------|---------------|------------|---------|
+| **Union** | 7 specs (auth, payload/xml, response, type/union, type/property/optionality, special-headers/repeatability) | Union return types (`NoContentResponse \| ErrorModel`) and union property types (`"a" \| "b"`) | `op get(): Success \| Error` |
+| **Tuple** | 3 specs (authentication/oauth2, noauth/union, union) | Tuple type args in `OAuth2Auth<[MyFlow]>` auth decorators | `@useAuth(OAuth2Auth<[MyFlow]>)` |
+| **Intrinsic** | 5 specs (type/array, dictionary, scalar, property/additional-properties, property/value-types) | `unknown` and `never` intrinsic types in properties and operations | `property: unknown`, `Record<unknown>` |
+| **UnionVariant** | 1 spec (type/model/inheritance/enum-discriminator) | Specific enum variant as discriminator property type | `kind: DogKind.Golden` |
