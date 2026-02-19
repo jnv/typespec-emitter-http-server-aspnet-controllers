@@ -12,6 +12,8 @@ import { ClassDeclaration, EnumDeclaration } from "@typespec/emitter-framework/c
 import { ControllerDeclaration } from "./components/controller.jsx";
 import { IntrinsicTypeExpression } from "./components/intrinsic-type-expression.jsx";
 import { OperationsInterfaceDeclaration } from "./components/operations-interface.jsx";
+import { UnionTypeExpression } from "./components/union-type-expression.jsx";
+import { UnionVariantTypeExpression } from "./components/union-variant-type-expression.jsx";
 import type { EmitterOptions } from "./lib.js";
 import { getHttpServices } from "./utils/extract-http-services.js";
 import { extractTypes } from "./utils/extract-types.js";
@@ -42,6 +44,12 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
   const overrides = new Experimental_ComponentOverridesConfig()
     .forTypeKind("Intrinsic", {
       reference: IntrinsicTypeExpression,
+    })
+    .forTypeKind("Union", {
+      reference: UnionTypeExpression,
+    })
+    .forTypeKind("UnionVariant", {
+      reference: UnionVariantTypeExpression,
     });
 
   await writeOutput(
