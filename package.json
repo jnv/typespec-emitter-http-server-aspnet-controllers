@@ -18,6 +18,11 @@
     "@alloy-js/cli": "0.22.0",
     "@alloy-js/rollup-plugin": "0.1.0",
     "@types/node": "^24.1.0",
+    "@typespec/http-specs": "0.1.0-alpha.32",
+    "@typespec/rest": "0.79.0",
+    "@typespec/spector": "0.1.0-alpha.23",
+    "@typespec/versioning": "0.79.0",
+    "@typespec/xml": "0.79.0",
     "concurrently": "^9.2.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
