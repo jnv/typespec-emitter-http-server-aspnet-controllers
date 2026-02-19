@@ -150,8 +150,11 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
 
 ## Key paths
 
-- **Emitter entry**: `src/emitter.tsx` — `$onEmit`; extracts types and HTTP services, then renders models, operations interfaces, and controllers via JSX components. Wraps the output tree in `Experimental_ComponentOverrides` to register custom type-kind overrides (e.g. `IntrinsicTypeExpression` for Intrinsic types) that intercept all `TypeExpression` calls globally, including those inside emitter-framework's `ClassDeclaration`/`Property`.
-- **Intrinsic type override**: `src/components/intrinsic-type-expression.tsx` — override component registered via `Experimental_ComponentOverrides` for the `"Intrinsic"` type kind. Maps `unknown` → `object`, `never` → `object`, `null` → `null`. The framework's `TypeExpression` has no branch for `kind === "Intrinsic"` (except `void` via `isVoidType()`); the override mechanism (`Experimental_OverridableComponent`) is the intended extension point.
+- **Emitter entry**: `src/emitter.tsx` — `$onEmit`; extracts types and HTTP services, then renders models, operations interfaces, and controllers via JSX components. Wraps the output tree in `Experimental_ComponentOverrides` to register custom type-kind overrides (Intrinsic, Union, UnionVariant) that intercept all `TypeExpression` calls globally, including those inside emitter-framework's `ClassDeclaration`/`Property`.
+- **Type kind overrides**: The framework's `TypeExpression` does not handle all TypeSpec type kinds. Three override components are registered via `Experimental_ComponentOverrides` in `src/emitter.tsx`:
+  - `src/components/intrinsic-type-expression.tsx` — `"Intrinsic"` type kind. Maps `unknown` → `object`, `never` → `object`, `null` → `null`.
+  - `src/components/union-type-expression.tsx` — `"Union"` type kind. Coalesces union variants: nullable unions (`T | null`) delegate to `TypeExpression` with `?` for value types; literal unions (`"a" | "b"`) collapse to the base scalar; mixed/model unions fall back to `object`.
+  - `src/components/union-variant-type-expression.tsx` — `"UnionVariant"` type kind. Delegates to `TypeExpression` with the variant's underlying type (e.g. `DogKind.Golden` → the variant's scalar type).
 - **Model/type extraction**: `src/utils/extract-types.ts` — single entrypoint for models and enums (skips stdlib, array/record, and models with Tuple-typed properties — the latter are auth decorator arguments such as OAuth2 flow definitions that cannot be rendered to C#); `extract-models.ts` and `extract-enums.ts` are thin wrappers.
 - **HTTP service extraction**: `src/utils/extract-http-services.ts` — collects HTTP operations from all namespaces into a unified service; `src/utils/operation-to-action.ts` — converts HTTP operations to controller action descriptors (parameters, routes, response headers) and groups operations by container.
 - **Controller components**: `src/components/controller/controller-declaration.tsx` — renders the ASP.NET controller class (attributes, DI constructor, action methods); `src/components/controller/action-method-body.tsx` — renders the method body (service call, response headers, return); `src/components/controller/build-controller-params.tsx` — maps parameters to binding attributes (`FromRoute`, `FromQuery`, `FromBody`, `FromHeader`).
@@ -174,15 +177,6 @@ When editing the emitter or adding controllers, run `npm run build:samples` and 
 
 The `test/http-specs.test.ts` suite compiles ~60 standard HTTP scenario specs from `@typespec/http-specs` through the emitter. Current baseline:
 
-- **49 passing** — compile and produce C# output
-- **10 expected failures** — emitter crashes on unsupported TypeSpec type kinds in emitter-framework's `TypeExpression`
+- **59 passing** — compile and produce C# output
+- **0 expected failures** — all previously-failing Union/UnionVariant specs now pass via type-kind overrides
 - **2 skipped** — compiler-level diagnostics unrelated to the emitter
-
-### Failure categories
-
-All 10 expected failures stem from `TypeExpression` (from `@typespec/emitter-framework/csharp`) not handling certain TypeSpec type kinds. Intrinsic types (`unknown`, `never`, `null`) are handled via a `forTypeKind("Intrinsic")` override registered in `src/emitter.tsx` (see `src/components/intrinsic-type-expression.tsx`).
-
-| Type kind | Specs affected | Root cause | Example |
-|-----------|---------------|------------|---------|
-| **Union** | 9 specs (authentication/api-key, authentication/http/custom, authentication/oauth2, payload/xml, response/status-code-range, type/union, type/property/optionality, type/property/value-types, special-headers/repeatability) | Union return types (`NoContentResponse \| ErrorModel`) and union property types (`"a" \| "b"`) | `op get(): Success \| Error` |
-| **UnionVariant** | 1 spec (type/model/inheritance/enum-discriminator) | Specific enum variant as discriminator property type | `kind: DogKind.Golden` |

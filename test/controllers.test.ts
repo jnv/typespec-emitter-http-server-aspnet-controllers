@@ -1,4 +1,4 @@
-import { doesNotMatch, match, strictEqual } from "node:assert/strict";
+import { doesNotMatch, match, ok, strictEqual } from "node:assert/strict";
 import { describe, it } from "vitest";
 import { Tester } from "./test-host.js";
 
@@ -226,6 +226,26 @@ describe("controllers", () => {
         /Response\.Headers/,
         "Controller should not set any Response.Headers when no response headers exist",
       );
+    });
+
+    it("emits controller for operation with union return type", async () => {
+      const result = await Tester.compile(`
+        import "@typespec/http";
+        using TypeSpec.Http;
+
+        model SuccessResult { value: string; }
+        model ErrorResult { code: int32; message: string; }
+
+        @route("/things")
+        interface Things {
+          @get read(): SuccessResult | ErrorResult;
+        }
+      `);
+
+      const controller = result.outputs["Controllers/ThingsController.cs"];
+      ok(controller, "Controllers/ThingsController.cs should be emitted");
+      match(controller, /ThingsController/, "Controller class should exist");
+      match(controller, /object/, "Union return type should be rendered as object");
     });
 
     it("includes the full model type in the operations interface", async () => {

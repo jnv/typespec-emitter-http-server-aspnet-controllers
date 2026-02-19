@@ -8,21 +8,7 @@ import { discoverHttpSpecs, readSpecContent } from "./http-specs-utils.js";
  * Each key is the spec category (e.g. "payload/xml").
  * When the emitter adds support for a feature, remove its entry here.
  */
-const EXPECTED_FAILURES: Set<string> = new Set([
-  // Union types — emitter-framework TypeExpression does not support Union
-  "authentication/api-key",
-  "authentication/http/custom",
-  "authentication/oauth2",
-  "payload/xml",
-  "response/status-code-range",
-  "special-headers/repeatability",
-  "type/property/optionality",
-  "type/property/value-types",
-  "type/union",
-
-  // UnionVariant — emitter-framework TypeExpression does not support UnionVariant
-  "type/model/inheritance/enum-discriminator",
-]);
+const EXPECTED_FAILURES: Set<string> = new Set([]);
 
 /**
  * Specs to skip entirely (e.g. they cause compiler-level diagnostics
