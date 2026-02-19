@@ -12,16 +12,12 @@ const EXPECTED_FAILURES: Set<string> = new Set([
   // Union types — emitter-framework TypeExpression does not support Union
   "authentication/api-key",
   "authentication/http/custom",
+  "authentication/oauth2",
   "payload/xml",
   "response/status-code-range",
   "special-headers/repeatability",
   "type/property/optionality",
   "type/union",
-
-  // Tuple types — emitter-framework TypeExpression does not support Tuple
-  "authentication/noauth/union",
-  "authentication/oauth2",
-  "authentication/union",
 
   // Intrinsic types (unknown/never) — emitter-framework TypeExpression does not support these
   "type/array",
