@@ -53,21 +53,10 @@ describe("http-specs compilation", () => {
       continue;
     }
 
-    const expectFailure = EXPECTED_FAILURES.has(spec.category);
+    const fails = EXPECTED_FAILURES.has(spec.category);
 
-    it(`compiles ${spec.category}`, { timeout: 30_000 }, async () => {
+    it(`compiles ${spec.category}`, { timeout: 30_000, fails }, async () => {
       const content = await readSpecContent(spec);
-
-      if (expectFailure) {
-        try {
-          await HttpSpecsTester.compile(content);
-        } catch {
-          // Expected failure — spec uses unsupported features
-          return;
-        }
-        return;
-      }
-
       const result = await HttpSpecsTester.compile(content);
       const outputFiles = Object.keys(result.outputs);
       ok(
