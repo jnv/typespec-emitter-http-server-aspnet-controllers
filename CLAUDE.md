@@ -151,7 +151,7 @@ When building JSX-based emitters, prefer declarative patterns from `@alloy-js/co
 ## Key paths
 
 - **Emitter entry**: `src/emitter.tsx` — `$onEmit`; extracts types and HTTP services, then renders models, operations interfaces, and controllers via JSX components.
-- **Model/type extraction**: `src/utils/extract-types.ts` — single entrypoint for models and enums (skips stdlib and array/record); `extract-models.ts` and `extract-enums.ts` are thin wrappers.
+- **Model/type extraction**: `src/utils/extract-types.ts` — single entrypoint for models and enums (skips stdlib, array/record, and models with Tuple-typed properties — the latter are auth decorator arguments such as OAuth2 flow definitions that cannot be rendered to C#); `extract-models.ts` and `extract-enums.ts` are thin wrappers.
 - **HTTP service extraction**: `src/utils/extract-http-services.ts` — collects HTTP operations from all namespaces into a unified service; `src/utils/operation-to-action.ts` — converts HTTP operations to controller action descriptors (parameters, routes, response headers) and groups operations by container.
 - **Controller components**: `src/components/controller/controller-declaration.tsx` — renders the ASP.NET controller class (attributes, DI constructor, action methods); `src/components/controller/action-method-body.tsx` — renders the method body (service call, response headers, return); `src/components/controller/build-controller-params.tsx` — maps parameters to binding attributes (`FromRoute`, `FromQuery`, `FromBody`, `FromHeader`).
 - **Operations interface**: `src/components/operations-interface.tsx` — renders the operations interface (e.g. `IUsers`) with async methods and `CancellationToken`.
@@ -173,17 +173,16 @@ When editing the emitter or adding controllers, run `npm run build:samples` and 
 
 The `test/http-specs.test.ts` suite compiles ~60 standard HTTP scenario specs from `@typespec/http-specs` through the emitter. Current baseline:
 
-- **43 passing** — compile and produce C# output
-- **16 expected failures** — emitter crashes on unsupported TypeSpec type kinds in emitter-framework's `TypeExpression`
+- **45 passing** — compile and produce C# output
+- **14 expected failures** — emitter crashes on unsupported TypeSpec type kinds in emitter-framework's `TypeExpression`
 - **2 skipped** — compiler-level diagnostics unrelated to the emitter
 
 ### Failure categories
 
-All 16 expected failures stem from `TypeExpression` (from `@typespec/emitter-framework/csharp`) not handling certain TypeSpec type kinds. This affects both direct `TypeExpression` calls in operations/controllers and indirect calls inside emitter-framework's `ClassDeclaration`/`Property`.
+All 14 expected failures stem from `TypeExpression` (from `@typespec/emitter-framework/csharp`) not handling certain TypeSpec type kinds. This affects both direct `TypeExpression` calls in operations/controllers and indirect calls inside emitter-framework's `ClassDeclaration`/`Property`.
 
 | Type kind | Specs affected | Root cause | Example |
 |-----------|---------------|------------|---------|
-| **Union** | 7 specs (auth, payload/xml, response, type/union, type/property/optionality, special-headers/repeatability) | Union return types (`NoContentResponse \| ErrorModel`) and union property types (`"a" \| "b"`) | `op get(): Success \| Error` |
-| **Tuple** | 3 specs (authentication/oauth2, noauth/union, union) | Tuple type args in `OAuth2Auth<[MyFlow]>` auth decorators | `@useAuth(OAuth2Auth<[MyFlow]>)` |
+| **Union** | 8 specs (authentication/api-key, authentication/http/custom, authentication/oauth2, payload/xml, response, type/union, type/property/optionality, special-headers/repeatability) | Union return types (`NoContentResponse \| ErrorModel`) and union property types (`"a" \| "b"`) | `op get(): Success \| Error` |
 | **Intrinsic** | 5 specs (type/array, dictionary, scalar, property/additional-properties, property/value-types) | `unknown` and `never` intrinsic types in properties and operations | `property: unknown`, `Record<unknown>` |
 | **UnionVariant** | 1 spec (type/model/inheritance/enum-discriminator) | Specific enum variant as discriminator property type | `kind: DogKind.Golden` |
