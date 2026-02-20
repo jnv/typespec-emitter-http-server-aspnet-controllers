@@ -1,6 +1,7 @@
 import * as cs from "@alloy-js/csharp";
+import type { Children } from "@alloy-js/core";
 import { Show } from "@alloy-js/core";
-import type { EmitContext } from "@typespec/compiler";
+import type { EmitContext, Namespace, Program } from "@typespec/compiler";
 import type { HttpOperation, OperationContainer } from "@typespec/http";
 import {
   Experimental_ComponentOverrides,
@@ -14,25 +15,50 @@ import { IntrinsicTypeExpression } from "./components/intrinsic-type-expression.
 import { OperationsInterfaceDeclaration } from "./components/operations-interface.jsx";
 import { UnionTypeExpression } from "./components/union-type-expression.jsx";
 import { UnionVariantTypeExpression } from "./components/union-variant-type-expression.jsx";
+import { VisibilityClassDeclaration } from "./components/visibility-class-declaration.jsx";
 import type { EmitterOptions } from "./lib.js";
 import { getHttpServices } from "./utils/extract-http-services.js";
 import { extractTypes } from "./utils/extract-types.js";
 import { groupOperationsByContainer } from "./utils/operation-to-action.js";
+import { resolveVersionPlan } from "./utils/resolve-versions.js";
+import type { VisibilityFilteredModel } from "./utils/visibility-analysis.js";
+import { analyzeVisibility } from "./utils/visibility-analysis.js";
 
-export async function $onEmit(context: EmitContext<EmitterOptions>) {
-  // Read namespace configuration from options, with defaults
-  const options = context.options;
-  const modelsNamespace = options?.namespace?.models ?? "Generated.Models";
-  const operationsNamespace = options?.namespace?.operations ?? "Generated.Operations";
-  const controllersNamespace = options?.namespace?.controllers ?? "Generated.Controllers";
-  const program = context.program;
-  const namePolicy = cs.createCSharpNamePolicy();
-  const { models, enums } = extractTypes(program);
+interface EmitConfig {
+  program: Program;
+  namePolicy: ReturnType<typeof cs.createCSharpNamePolicy>;
+  modelsNamespace: string;
+  operationsNamespace: string;
+  controllersNamespace: string;
+  pathPrefix: string;
+  rootNamespace?: Namespace;
+}
 
-  const [httpServices] = getHttpServices(program);
-  const controllerGroups: Array<{ container: OperationContainer; operations: HttpOperation[] }> = [];
+/**
+ * Build the JSX output tree for a single emission scope (one version or the whole program).
+ */
+function buildOutputTree(config: EmitConfig): Children {
+  const {
+    program,
+    namePolicy,
+    modelsNamespace,
+    operationsNamespace,
+    controllersNamespace,
+    pathPrefix,
+    rootNamespace,
+  } = config;
+
+  const { models, enums } = extractTypes(program, rootNamespace);
+
+  const [httpServices] = getHttpServices(program, rootNamespace);
+  const controllerGroups: Array<{
+    container: OperationContainer;
+    operations: HttpOperation[];
+  }> = [];
+  const allOperations: HttpOperation[] = [];
   for (const service of httpServices) {
     if (service.operations.length === 0) continue;
+    allOperations.push(...service.operations);
     const byContainer = groupOperationsByContainer(service.operations);
     for (const [container, operations] of byContainer) {
       if (operations.length > 0) {
@@ -40,6 +66,89 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
       }
     }
   }
+
+  // Analyze visibility to determine which models need filtered DTOs
+  const visibilityPlan = analyzeVisibility(program, models, allOperations);
+
+  return (
+    <>
+      <cs.Namespace name={modelsNamespace}>
+        {enums.map((enumType) => (
+          <cs.SourceFile
+            path={`${pathPrefix}Models/${namePolicy.getName(enumType.name!, "enum")}.cs`}
+          >
+            <EnumDeclaration type={enumType} />
+          </cs.SourceFile>
+        ))}
+        {visibilityPlan.standardModels.map((model) => (
+          <cs.SourceFile path={`${pathPrefix}Models/${model.name}.cs`}>
+            <ClassDeclaration type={model} />
+          </cs.SourceFile>
+        ))}
+        {visibilityPlan.filteredModels.map((fm) => (
+          <cs.SourceFile path={`${pathPrefix}Models/${fm.className}.cs`}>
+            <VisibilityClassDeclaration model={fm} />
+          </cs.SourceFile>
+        ))}
+      </cs.Namespace>
+      <Show when={controllerGroups.length > 0}>
+        <cs.Namespace name={operationsNamespace}>
+          {controllerGroups.map(({ container, operations }) => {
+            const interfaceName =
+              "I" +
+              (container.name
+                ? namePolicy.getName(container.name, "class")
+                : "Api");
+            return (
+              <cs.SourceFile
+                path={`${pathPrefix}Operations/${interfaceName}.cs`}
+                using={[modelsNamespace]}
+              >
+                <OperationsInterfaceDeclaration
+                  program={program}
+                  container={container}
+                  operations={operations}
+                  visibilityLookup={visibilityPlan.lookup}
+                />
+              </cs.SourceFile>
+            );
+          })}
+        </cs.Namespace>
+        <cs.Namespace name={controllersNamespace}>
+          {controllerGroups.map(({ container, operations }) => {
+            const controllerName =
+              (container.name
+                ? namePolicy.getName(container.name, "class")
+                : "Api") + "Controller";
+            return (
+              <cs.SourceFile
+                path={`${pathPrefix}Controllers/${controllerName}.cs`}
+                using={[modelsNamespace, operationsNamespace]}
+              >
+                <ControllerDeclaration
+                  program={program}
+                  container={container}
+                  operations={operations}
+                  visibilityLookup={visibilityPlan.lookup}
+                />
+              </cs.SourceFile>
+            );
+          })}
+        </cs.Namespace>
+      </Show>
+    </>
+  );
+}
+
+export async function $onEmit(context: EmitContext<EmitterOptions>) {
+  const options = context.options;
+  const baseModelsNs = options?.namespace?.models ?? "Generated.Models";
+  const baseOperationsNs =
+    options?.namespace?.operations ?? "Generated.Operations";
+  const baseControllersNs =
+    options?.namespace?.controllers ?? "Generated.Controllers";
+  const program = context.program;
+  const namePolicy = cs.createCSharpNamePolicy();
 
   const overrides = new Experimental_ComponentOverridesConfig()
     .forTypeKind("Intrinsic", {
@@ -52,62 +161,49 @@ export async function $onEmit(context: EmitContext<EmitterOptions>) {
       reference: UnionVariantTypeExpression,
     });
 
-  await writeOutput(
-    program,
-    <Experimental_ComponentOverrides overrides={overrides}>
-      <Output program={program} namePolicy={namePolicy}>
-        <cs.Namespace name={modelsNamespace}>
-        {enums.map((enumType) => (
-          <cs.SourceFile path={`Models/${namePolicy.getName(enumType.name!, "enum")}.cs`}>
-            <EnumDeclaration type={enumType} />
-          </cs.SourceFile>
-        ))}
-        {models.map((model) => (
-          <cs.SourceFile path={`Models/${model.name}.cs`}>
-            <ClassDeclaration type={model} />
-          </cs.SourceFile>
-        ))}
-      </cs.Namespace>
-      <Show when={controllerGroups.length > 0}>
-        <cs.Namespace name={operationsNamespace}>
-          {controllerGroups.map(({ container, operations }) => {
-            const interfaceName =
-              "I" + (container.name ? namePolicy.getName(container.name, "class") : "Api");
-            return (
-              <cs.SourceFile
-                path={`Operations/${interfaceName}.cs`}
-                using={[modelsNamespace]}
-              >
-                <OperationsInterfaceDeclaration
-                  program={program}
-                  container={container}
-                  operations={operations}
-                />
-              </cs.SourceFile>
-            );
-          })}
-        </cs.Namespace>
-        <cs.Namespace name={controllersNamespace}>
-          {controllerGroups.map(({ container, operations }) => {
-            const controllerName =
-              (container.name ? namePolicy.getName(container.name, "class") : "Api") + "Controller";
-            return (
-              <cs.SourceFile
-                path={`Controllers/${controllerName}.cs`}
-                using={[modelsNamespace, operationsNamespace]}
-              >
-                <ControllerDeclaration
-                  program={program}
-                  container={container}
-                  operations={operations}
-                />
-              </cs.SourceFile>
-            );
-          })}
-        </cs.Namespace>
-      </Show>
-      </Output>
-    </Experimental_ComponentOverrides>,
-    context.emitterOutputDir,
-  );
+  const versionPlan = await resolveVersionPlan(program);
+
+  if (versionPlan.isVersioned) {
+    for (const snapshot of versionPlan.snapshots) {
+      const vLabel = snapshot.sanitizedLabel;
+      const tree = buildOutputTree({
+        program,
+        namePolicy,
+        modelsNamespace: `Generated.${vLabel}.Models`,
+        operationsNamespace: `Generated.${vLabel}.Operations`,
+        controllersNamespace: `Generated.${vLabel}.Controllers`,
+        pathPrefix: `${snapshot.versionLabel}/`,
+        rootNamespace: snapshot.namespace,
+      });
+
+      await writeOutput(
+        program,
+        <Experimental_ComponentOverrides overrides={overrides}>
+          <Output program={program} namePolicy={namePolicy}>
+            {tree}
+          </Output>
+        </Experimental_ComponentOverrides>,
+        context.emitterOutputDir,
+      );
+    }
+  } else {
+    const tree = buildOutputTree({
+      program,
+      namePolicy,
+      modelsNamespace: baseModelsNs,
+      operationsNamespace: baseOperationsNs,
+      controllersNamespace: baseControllersNs,
+      pathPrefix: "",
+    });
+
+    await writeOutput(
+      program,
+      <Experimental_ComponentOverrides overrides={overrides}>
+        <Output program={program} namePolicy={namePolicy}>
+          {tree}
+        </Output>
+      </Experimental_ComponentOverrides>,
+      context.emitterOutputDir,
+    );
+  }
 }

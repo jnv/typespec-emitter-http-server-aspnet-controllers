@@ -47,14 +47,20 @@ function collectFromNamespace(
 
 /**
  * Extracts user-defined models and enums from the program.
- * Traverses the global namespace and its sub-namespaces (user spec only).
+ * Traverses the given namespace (or global) and its sub-namespaces (user spec only).
  * Uses typekit for model classification (array/record). Single entrypoint
  * so the emitter can call it once to get both lists.
+ *
+ * @param rootNamespace - Optional scoped namespace (e.g. a version-projected namespace).
+ *   When omitted, walks from the global namespace.
  */
-export function extractTypes(program: Program): { models: Model[]; enums: Enum[] } {
+export function extractTypes(
+  program: Program,
+  rootNamespace?: Namespace,
+): { models: Model[]; enums: Enum[] } {
   const models: Model[] = [];
   const enums: Enum[] = [];
-  const globalNs = program.getGlobalNamespaceType();
-  collectFromNamespace(program, globalNs, models, enums);
+  const startNs = rootNamespace ?? program.getGlobalNamespaceType();
+  collectFromNamespace(program, startNs, models, enums);
   return { models, enums };
 }
